@@ -1,17 +1,19 @@
+// src/hooks/useFAQs.ts - Updated to use faqs table
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import type { Database } from '../lib/supabase';
 
-type FAQ = Database['public']['Tables']['faqs']['Row'];
-
-export interface UseFAQs {
-  faqs: FAQ[];
-  loading: boolean;
-  error: string | null;
-  refetch: () => Promise<void>;
+export interface FAQ {
+  id: string;
+  question: string;
+  answer: string;
+  category?: string;
+  order_index: number;
+  is_published: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
-export function useFAQs(): UseFAQs {
+export function useFAQs() {
   const [faqs, setFaqs] = useState<FAQ[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,20 +21,15 @@ export function useFAQs(): UseFAQs {
   const fetchFaqs = async () => {
     try {
       setLoading(true);
-      setError(null);
-      
-      const { data, error: supabaseError } = await supabase
+      const { data, error } = await supabase
         .from('faqs')
         .select('*')
-        .order('created_at', { ascending: false });
+        .eq('is_published', true)
+        .order('order_index');
 
-      if (supabaseError) {
-        throw supabaseError;
-      }
-
+      if (error) throw error;
       setFaqs(data || []);
     } catch (err) {
-      console.error('Error fetching FAQs:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch FAQs');
     } finally {
       setLoading(false);
@@ -43,10 +40,5 @@ export function useFAQs(): UseFAQs {
     fetchFaqs();
   }, []);
 
-  return {
-    faqs,
-    loading,
-    error,
-    refetch: fetchFaqs
-  };
+  return { faqs, loading, error, refetch: fetchFaqs };
 }
