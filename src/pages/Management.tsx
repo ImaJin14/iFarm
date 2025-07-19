@@ -9,6 +9,7 @@ import ErrorMessage from '../components/ui/ErrorMessage';
 import BiProductsManagement from '../components/Management/BiProductsManagement';
 import InventoryManagement from '../components/Management/InventoryManagement';
 import BreedingManagement from '../components/Management/BreedingManagement';
+import AnimalsManagement from '../components/Management/AnimalsManagement';
 
 export default function Management() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -182,103 +183,7 @@ export default function Management() {
   };
 
   const renderAnimals = () => {
-    if (animalsLoading) {
-      return (
-        <div className="flex justify-center py-12">
-          <LoadingSpinner size="lg" />
-        </div>
-      );
-    }
-
-    if (animalsError) {
-      return <ErrorMessage message={animalsError} />;
-    }
-
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-gray-900">Animals Management</h2>
-          <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Animal
-          </button>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Animal
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type & Breed
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Age & Weight
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Price
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {animals.map((animal) => (
-                  <tr key={animal.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <img
-                          src={animal.image_url}
-                          alt={animal.name}
-                          className="h-10 w-10 rounded-lg object-cover mr-3"
-                        />
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{animal.name}</div>
-                          <div className="text-sm text-gray-500">{animal.gender}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 capitalize">{animal.type}</div>
-                      <div className="text-sm text-gray-500">{animal.breed}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{animal.age} months</div>
-                      <div className="text-sm text-gray-500">{animal.weight} lbs</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(animal.status)}`}>
-                        {animal.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {animal.price ? `$${animal.price}` : 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end space-x-2">
-                        <button className="text-blue-600 hover:text-blue-900">
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button className="text-red-600 hover:text-red-900">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    );
+    return <AnimalsManagement />;
   };
 
   const renderContent = () => {
