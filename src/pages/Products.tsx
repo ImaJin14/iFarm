@@ -8,7 +8,7 @@ import ErrorMessage from '../components/ui/ErrorMessage';
 
 export default function Products() {
   const { animals, loading: animalsLoading, error: animalsError, refetch } = useAnimals();
-  const { animals: availableAnimals, loading: animalsLoading, error: animalsError } = useAvailableAnimals();
+  const { animals: availableAnimals, loading: availableAnimalsLoading, error: availableAnimalsError } = useAvailableAnimals();
   const { biProducts, loading: biProductsLoading, error: biProductsError } = useBiProducts();
   const [selectedAnimalType, setSelectedAnimalType] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -266,13 +266,13 @@ export default function Products() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {animalsLoading ? (
+            {availableAnimalsLoading ? (
               <div className="col-span-full flex justify-center py-12">
                 <LoadingSpinner size="lg" />
               </div>
-            ) : animalsError ? (
+            ) : availableAnimalsError ? (
               <div className="col-span-full">
-                <ErrorMessage message={animalsError} />
+                <ErrorMessage message={availableAnimalsError} />
               </div>
             ) : (
               filteredAvailableAnimals.map((animal) => (
