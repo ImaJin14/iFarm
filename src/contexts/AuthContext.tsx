@@ -93,41 +93,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, fullName: string, role: UserRole) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password
-    });
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password
+      });
 
-    if (error) {
-      throw error;
-    }
-
-    if (data.user) {
-      // Create user profile
-      const { error: profileError } = await supabase
-        .from('users')
-        .insert([
-          {
-            id: data.user.id,
-            email: data.user.email!,
-            full_name: fullName,
-            role: role
-          }
-        ]);
-
-      if (profileError) {
-        throw profileError;
+      if (error) {
+        throw error;
       }
+
+      if (data.user) {
+        // Create user profile
+        const { error: profileError } = await supabase
+          .from('users')
+          .insert([
+            {
+              id: data.user.id,
+              email: data.user.email!,
+              full_name: fullName,
+              role: role
+            }
+          ]);
+
+        if (profileError) {
+          throw profileError;
+        }
+      }
+    } catch (error) {
+      console.error('Sign up error:', error);
+      throw error;
     }
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        throw error;
+      }
+      setUser(null);
+      setSession(null);
+    } catch (error) {
+      console.error('Sign out error:', error);
       throw error;
     }
-    setUser(null);
-    setSession(null);
   };
 
   const hasRole = (role: UserRole): boolean => {
