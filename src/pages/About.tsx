@@ -19,9 +19,8 @@ export default function About() {
               About iFarm
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">{(aboutContent && aboutContent.hero_intro_text) ||
-              Founded in 2015, we've been dedicated to sustainable livestock farming practices, 
-              ethical breeding, and providing exceptional animals to our community across multiple species.
-            </p>
+              "Founded in 2015, we've been dedicated to sustainable livestock farming practices, ethical breeding, and providing exceptional animals to our community across multiple species."
+            }</p>
           </div>
         </div>
       </section>
@@ -33,10 +32,8 @@ export default function About() {
             <div>
               <h2 className="text-3xl font-bold text-gray-900 mb-6">Our Mission & Values</h2>
               <p className="text-lg text-gray-600 mb-6">{(aboutContent && aboutContent.mission_statement) ||
-                To provide healthy, well-bred animals across multiple species while maintaining the highest standards 
-                of animal welfare and environmental responsibility. We believe in sustainable 
-                farming practices that benefit both our animals and the community.
-              </p>
+                "To provide healthy, well-bred animals across multiple species while maintaining the highest standards of animal welfare and environmental responsibility. We believe in sustainable farming practices that benefit both our animals and the community."
+              }</p>
               <div className="grid grid-cols-2 gap-6">
                 {(aboutContent && aboutContent.values_list || []).map((value, index) => (
                   <div key={index} className="flex items-start space-x-3">
@@ -82,8 +79,8 @@ export default function About() {
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Our Journey</h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">{(aboutContent && aboutContent.history_intro_text) ||
-              From a small backyard hobby to a certified sustainable multi-species farm
-            </p>
+              "From a small backyard hobby to a certified sustainable multi-species farm"
+            }</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8"> 
@@ -159,8 +156,8 @@ export default function About() {
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Certifications & Awards</h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">{(aboutContent && aboutContent.certifications_intro_text) ||
-              Recognition for our commitment to excellence and sustainable practices
-            </p>
+              "Recognition for our commitment to excellence and sustainable practices"
+            }</p>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
@@ -189,8 +186,8 @@ export default function About() {
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Farm Gallery</h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">{(aboutContent && aboutContent.gallery_intro_text) ||
-              Take a visual tour of our facilities and meet some of our animals
-            </p>
+              "Take a visual tour of our facilities and meet some of our animals"
+            }</p>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
