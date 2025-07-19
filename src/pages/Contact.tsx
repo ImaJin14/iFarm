@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { MapPin, Phone, Mail, Clock, Send, MessageCircle, Facebook, Instagram, Twitter, CheckCircle } from 'lucide-react';
+import { useContactContent } from '../hooks/useContactContent';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
+import ErrorMessage from '../components/ui/ErrorMessage';
 
 export default function Contact() {
   const [searchParams] = useSearchParams();
+  const { contactContent, loading, error } = useContactContent();
   const [showSuccess, setShowSuccess] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -55,6 +59,29 @@ export default function Contact() {
     });
   };
 
+  const getIconComponent = (iconName: string) => {
+    const icons: { [key: string]: any } = {
+      Facebook, Instagram, Twitter, MapPin, Phone, Mail, Clock
+    };
+    return icons[iconName] || MapPin;
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (error || !contactContent) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <ErrorMessage message={error || 'Failed to load contact content'} />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
@@ -62,11 +89,10 @@ export default function Contact() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
-              Get In Touch
+              {contactContent.hero_title}
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              We'd love to hear from you! Whether you have questions about our animals, 
-              need care advice, or want to schedule a visit, we're here to help.
+              {contactContent.hero_description}
             </p>
           </div>
         </div>
@@ -79,7 +105,7 @@ export default function Contact() {
             <div>
               <h2 className="text-3xl font-bold text-gray-900 mb-6">Contact Information</h2>
               <p className="text-lg text-gray-600 mb-8">
-                We're always happy to discuss our animals, share our expertise, or answer any questions you might have.
+                {contactContent.contact_description}
               </p>
             </div>
 
@@ -91,7 +117,12 @@ export default function Contact() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-1">Visit Our Farm</h3>
-                  <p className="text-gray-600">123 Farm Road<br />Rural Valley, ST 12345</p>
+                  <p className="text-gray-600">{contactContent.address.split(',').map((line, index) => (
+                    <span key={index}>
+                      {line.trim()}
+                      {index < contactContent.address.split(',').length - 1 && <br />}
+                    </span>
+                  ))}</p>
                   <p className="text-sm text-gray-500 mt-1">Farm visits by appointment only</p>
                 </div>
               </div>
@@ -102,7 +133,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-1">Call Us</h3>
-                  <p className="text-gray-600">(555) 123-4567</p>
+                  <p className="text-gray-600">{contactContent.phone}</p>
                   <p className="text-sm text-gray-500 mt-1">Monday - Friday, 8 AM - 6 PM</p>
                 </div>
               </div>
@@ -113,7 +144,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-1">Email Us</h3>
-                  <p className="text-gray-600">info@ifarm.com</p>
+                  <p className="text-gray-600">{contactContent.email}</p>
                   <p className="text-sm text-gray-500 mt-1">We respond within 24 hours</p>
                 </div>
               </div>
@@ -125,9 +156,9 @@ export default function Contact() {
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-1">Business Hours</h3>
                   <div className="text-gray-600">
-                    <p>Monday - Friday: 8:00 AM - 6:00 PM</p>
-                    <p>Saturday: 8:00 AM - 4:00 PM</p>
-                    <p>Sunday: By appointment only</p>
+                    {(contactContent.business_hours as any[])?.map((hour, index) => (
+                      <p key={index}>{hour.day}: {hour.hours}</p>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -137,30 +168,31 @@ export default function Contact() {
             <div>
               <h3 className="font-semibold text-gray-900 mb-4">Follow Us</h3>
               <div className="flex space-x-4">
-                <a 
-                  href="https://facebook.com" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg transition-colors duration-200"
-                >
-                  <Facebook className="h-5 w-5" />
-                </a>
-                <a 
-                  href="https://instagram.com" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="bg-pink-600 hover:bg-pink-700 text-white p-3 rounded-lg transition-colors duration-200"
-                >
-                  <Instagram className="h-5 w-5" />
-                </a>
-                <a 
-                  href="https://twitter.com" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="bg-blue-400 hover:bg-blue-500 text-white p-3 rounded-lg transition-colors duration-200"
-                >
-                  <Twitter className="h-5 w-5" />
-                </a>
+                {(contactContent.social_links as any[])?.map((link, index) => {
+                  const IconComponent = getIconComponent(link.icon);
+                  const getColorClass = (platform: string) => {
+                    switch (platform.toLowerCase()) {
+                      case 'facebook': return 'bg-blue-600 hover:bg-blue-700';
+                      case 'instagram': return 'bg-pink-600 hover:bg-pink-700';
+                      case 'twitter': return 'bg-blue-400 hover:bg-blue-500';
+                      case 'linkedin': return 'bg-blue-700 hover:bg-blue-800';
+                      case 'youtube': return 'bg-red-600 hover:bg-red-700';
+                      default: return 'bg-gray-600 hover:bg-gray-700';
+                    }
+                  };
+                  
+                  return (
+                    <a 
+                      key={index}
+                      href={link.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className={`${getColorClass(link.platform)} text-white p-3 rounded-lg transition-colors duration-200`}
+                    >
+                      <IconComponent className="h-5 w-5" />
+                    </a>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -305,7 +337,7 @@ export default function Contact() {
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Find Us</h2>
             <p className="text-xl text-gray-600">
-              Located in the heart of Rural Valley, our farm is easily accessible for visits and pickups.
+              {contactContent.map_description}
             </p>
           </div>
 
@@ -313,7 +345,7 @@ export default function Contact() {
             <div className="text-center">
               <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-600">Interactive map would be integrated here</p>
-              <p className="text-sm text-gray-500 mt-2">123 Farm Road, Rural Valley, ST 12345</p>
+              <p className="text-sm text-gray-500 mt-2">{contactContent.address}</p>
             </div>
           </div>
         </div>
@@ -322,9 +354,9 @@ export default function Contact() {
       {/* Newsletter Section */}
       <section className="py-16 bg-green-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Stay Connected</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">{contactContent.newsletter_title}</h2>
           <p className="text-xl text-gray-600 mb-8">
-            Subscribe to our newsletter for updates on available animals, care tips, and farm news.
+            {contactContent.newsletter_description}
           </p>
           
           <div className="flex flex-col sm:flex-row max-w-md mx-auto">
@@ -339,7 +371,7 @@ export default function Contact() {
           </div>
           
           <p className="text-sm text-gray-500 mt-4">
-            We respect your privacy and never share your information.
+            {contactContent.newsletter_privacy_text}
           </p>
         </div>
       </section>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, Package, Heart, BarChart3, Settings, Plus, Edit, Trash2, Calendar, TrendingUp, Book, Info } from 'lucide-react';
+import { Users, Package, Heart, BarChart3, Settings, Plus, Edit, Trash2, Calendar, TrendingUp, Book, Info, Phone } from 'lucide-react';
 import { useAnimals } from '../hooks/useAnimals';
 import { useBreedingRecords } from '../hooks/useBreedingRecords';
 import { useInventory } from '../hooks/useInventory';
@@ -12,6 +12,7 @@ import BreedingManagement from '../components/Management/BreedingManagement';
 import AnimalsManagement from '../components/Management/AnimalsManagement';
 import EducationManagement from '../components/Management/EducationManagement';
 import AboutManagement from '../components/Management/AboutManagement';
+import ContactManagement from '../components/Management/ContactManagement';
 
 export default function Management() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -28,6 +29,7 @@ export default function Management() {
     { id: 'biproducts', name: 'Bi-Products', icon: Package },
     { id: 'education', name: 'Education', icon: Book },
     { id: 'about', name: 'About Page', icon: Info },
+    { id: 'contact', name: 'Contact Page', icon: Phone },
     { id: 'settings', name: 'Settings', icon: Settings }
   ];
 
@@ -206,6 +208,8 @@ export default function Management() {
         return <EducationManagement />;
       case 'about':
         return <AboutManagement />;
+      case 'contact':
+        return <ContactManagement />;
       case 'settings':
         return (
           <div className="text-center py-12">

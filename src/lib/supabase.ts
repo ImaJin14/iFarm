@@ -426,6 +426,59 @@ export interface Database {
           updated_at?: string
         }
       }
+      contact_content: {
+        Row: {
+          id: string
+          hero_title: string
+          hero_description: string
+          contact_description: string
+          address: string
+          phone: string
+          email: string
+          business_hours: any
+          social_links: any
+          map_description: string
+          newsletter_title: string
+          newsletter_description: string
+          newsletter_privacy_text: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          hero_title: string
+          hero_description: string
+          contact_description: string
+          address: string
+          phone: string
+          email: string
+          business_hours?: any
+          social_links?: any
+          map_description: string
+          newsletter_title: string
+          newsletter_description: string
+          newsletter_privacy_text: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          hero_title?: string
+          hero_description?: string
+          contact_description?: string
+          address?: string
+          phone?: string
+          email?: string
+          business_hours?: any
+          social_links?: any
+          map_description?: string
+          newsletter_title?: string
+          newsletter_description?: string
+          newsletter_privacy_text?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
   }
 }
