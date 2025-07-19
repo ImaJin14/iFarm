@@ -11,6 +11,7 @@ import InventoryManagement from '../components/Management/InventoryManagement';
 import BreedingManagement from '../components/Management/BreedingManagement';
 import AnimalsManagement from '../components/Management/AnimalsManagement';
 import EducationManagement from '../components/Management/EducationManagement';
+import AboutManagement from '../components/Management/AboutManagement';
 
 export default function Management() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -26,6 +27,7 @@ export default function Management() {
     { id: 'inventory', name: 'Inventory', icon: Package },
     { id: 'biproducts', name: 'Bi-Products', icon: Package },
     { id: 'education', name: 'Education', icon: Book },
+    { id: 'about', name: 'About Page', icon: Info },
     { id: 'settings', name: 'Settings', icon: Settings }
   ];
 
@@ -204,6 +206,8 @@ export default function Management() {
         return <EducationManagement />;
       case 'settings':
         return (
+          // This section is a placeholder for future settings management.
+          // It is not currently connected to any database or editable content.
           <div className="text-center py-12">
             <Settings className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500">Settings panel coming soon...</p>
@@ -211,6 +215,8 @@ export default function Management() {
         );
       default:
         return renderOverview();
+      case 'about':
+        return <AboutManagement />;
     }
   };
 
