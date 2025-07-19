@@ -30,14 +30,14 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
     try {
       if (isSignUp) {
         await signUp(formData.email, formData.password, formData.fullName, formData.role);
-        setError(null);
-        // Show success message for signup
         alert('Account created successfully! Please check your email to verify your account.');
+        onClose();
+        setFormData({ email: '', password: '', fullName: '', role: 'customer' });
       } else {
         await signIn(formData.email, formData.password);
+        onClose();
+        setFormData({ email: '', password: '', fullName: '', role: 'customer' });
       }
-      onClose();
-      setFormData({ email: '', password: '', fullName: '', role: 'customer' });
     } catch (err) {
       console.error('Auth error:', err);
       if (err instanceof Error && err.message.includes('User already registered')) {
