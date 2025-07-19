@@ -56,9 +56,9 @@ export default function AboutManagement() {
       setHistoryIntroText(aboutContent.history_intro_text);
       setCertificationsIntroText(aboutContent.certifications_intro_text);
       setGalleryIntroText(aboutContent.gallery_intro_text);
-      setValuesList(aboutContent.values_list || []);
-      setHistoryMilestones(aboutContent.history_milestones || []);
-      setCertificationsAwards(aboutContent.certifications_awards || []);
+      setValuesList(aboutContent.values_list as ValueItem[] || []);
+      setHistoryMilestones(aboutContent.history_milestones as HistoryMilestone[] || []);
+      setCertificationsAwards(aboutContent.certifications_awards as CertificationAward[] || []);
       setGalleryImages(aboutContent.gallery_images || []);
     }
   }, [aboutContent]);
@@ -80,26 +80,15 @@ export default function AboutManagement() {
         gallery_images: galleryImages
       };
 
-      // Find the existing 'about' page content entry
-      const { data: existingContent, error: fetchError } = await supabase
-        .from('page_content')
-        .select('id')
-        .eq('page_type', 'about')
-        .single();
+      const { error } = await supabase
+        .from('about_content')
+        .update(updateData)
+        .eq('id', aboutContent?.id);
 
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      const { error: updateError } = await supabase
-        .from('page_content')
-        .update({ content_data: updateData })
-        .eq('id', existingContent.id);
-
-      if (updateError) throw updateError;
+      if (error) throw error;
 
       setMessage({ type: 'success', text: 'About page content updated successfully!' });
-      refetch(); // Re-fetch to ensure local state is in sync
+      refetch();
     } catch (err) {
       setMessage({ 
         type: 'error', 

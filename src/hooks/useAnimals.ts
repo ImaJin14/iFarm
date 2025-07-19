@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
-import { supabase, calculateAge } from '../lib/supabase';
-import type { Database, Animal, AnimalWithBreed } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+import type { Database } from '../lib/supabase';
 
-type AvailableAnimal = Database['public']['Views']['available_animals_view']['Row'];
+type Animal = Database['public']['Tables']['animals']['Row'];
 
 export interface UseAnimals {
-  animals: AnimalWithBreed[];
+  animals: Animal[];
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
 }
 
 export function useAnimals(): UseAnimals {
-  const [animals, setAnimals] = useState<AnimalWithBreed[]>([]);
+  const [animals, setAnimals] = useState<Animal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,28 +23,7 @@ export function useAnimals(): UseAnimals {
       
       const { data, error: supabaseError } = await supabase
         .from('animals')
-        .select(`
-          *,
-          breeds (
-            id,
-            name,
-            type,
-            description,
-            characteristics,
-            average_weight_min,
-            average_weight_max,
-            price_range_min,
-            price_range_max,
-            primary_uses,
-            image_url
-          ),
-          facilities (
-            id,
-            name,
-            facility_type
-          )
-        `)
-        .eq('is_active', true)
+        .select('*')
         .order('name');
 
       if (supabaseError) {
@@ -73,7 +52,7 @@ export function useAnimals(): UseAnimals {
 }
 
 export function useAnimal(id: string) {
-  const [animal, setAnimal] = useState<AnimalWithBreed | null>(null);
+  const [animal, setAnimal] = useState<Animal | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -85,29 +64,8 @@ export function useAnimal(id: string) {
         
         const { data, error: supabaseError } = await supabase
           .from('animals')
-          .select(`
-            *,
-            breeds (
-              id,
-              name,
-              type,
-              description,
-              characteristics,
-              average_weight_min,
-              average_weight_max,
-              price_range_min,
-              price_range_max,
-              primary_uses,
-              image_url
-            ),
-            facilities (
-              id,
-              name,
-              facility_type
-            )
-          `)
+          .select('*')
           .eq('id', id)
-          .eq('is_active', true)
           .single();
 
         if (supabaseError) {
@@ -136,7 +94,7 @@ export function useAnimal(id: string) {
 }
 
 export function useAvailableAnimals() {
-  const [animals, setAnimals] = useState<AvailableAnimal[]>([]);
+  const [animals, setAnimals] = useState<Animal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -145,10 +103,10 @@ export function useAvailableAnimals() {
       setLoading(true);
       setError(null);
       
-      // Use the available_animals_view which already includes breed info and calculated age
       const { data, error: supabaseError } = await supabase
-        .from('available_animals_view')
+        .from('animals')
         .select('*')
+        .eq('status', 'available')
         .order('name');
 
       if (supabaseError) {

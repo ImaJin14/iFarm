@@ -38,6 +38,7 @@ export type guide_difficulty = 'Beginner' | 'Intermediate' | 'Advanced'
 export type transaction_type = 'sale' | 'purchase' | 'expense' | 'income' | 'refund' | 'fee'
 export type payment_method = 'cash' | 'check' | 'credit_card' | 'bank_transfer' | 'paypal' | 'other'
 
+
 export interface Database {
   public: {
     Tables: {
@@ -1994,6 +1995,7 @@ export interface Database {
       available_animals_view: {
         Row: {
           age_months: number | null
+          additional_images: string[] | null
           animal_type: animal_type | null
           breed_characteristics: Json | null
           breed_name: string | null
@@ -2014,6 +2016,7 @@ export interface Database {
       }
       breeding_performance_view: {
         Row: {
+          age_months: number | null
           animal_id: string | null
           avg_litter_size: number | null
           current_age_months: number | null
@@ -2141,49 +2144,4 @@ export interface Database {
       [_ in never]: never
     }
   }
-}
-
-// Helper types for easier use
-export type Animal = Database['public']['Tables']['animals']['Row']
-export type AnimalWithBreed = Animal & {
-  breeds: Database['public']['Tables']['breeds']['Row']
-  facilities?: Database['public']['Tables']['facilities']['Row']
-}
-
-export type Breed = Database['public']['Tables']['breeds']['Row']
-export type BiProduct = Database['public']['Tables']['bi_products']['Row']
-export type BreedingRecord = Database['public']['Tables']['breeding_records']['Row']
-export type InventoryItem = Database['public']['Tables']['inventory_items']['Row']
-export type TeamMember = Database['public']['Tables']['team_members']['Row']
-export type FAQ = Database['public']['Tables']['faqs']['Row']
-export type ContentItem = Database['public']['Tables']['content_items']['Row']
-export type PageContent = Database['public']['Tables']['page_content']['Row']
-export type FarmSetting = Database['public']['Tables']['farm_settings']['Row']
-
-// Utility function to calculate age from birth date
-export function calculateAge(birthDate: string | null): number {
-  if (!birthDate) return 0;
-  const birth = new Date(birthDate);
-  const now = new Date();
-  const diffTime = Math.abs(now.getTime() - birth.getTime());
-  const diffMonths = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30.44)); // Average days per month
-  return diffMonths;
-}
-
-// Utility function to format price range
-export function formatPriceRange(min: number | null, max: number | null): string {
-  if (!min && !max) return 'Contact for pricing';
-  if (!min) return `Up to $${max}`;
-  if (!max) return `From $${min}`;
-  if (min === max) return `$${min}`;
-  return `$${min} - $${max}`;
-}
-
-// Utility function to format weight range
-export function formatWeightRange(min: number | null, max: number | null): string {
-  if (!min && !max) return 'Varies';
-  if (!min) return `Up to ${max} lbs`;
-  if (!max) return `From ${min} lbs`;
-  if (min === max) return `${min} lbs`;
-  return `${min} - ${max} lbs`;
 }

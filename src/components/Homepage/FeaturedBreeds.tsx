@@ -1,21 +1,27 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
-import { useAvailableAnimals } from '../../hooks/useAnimals';
+import { useAnimals } from '../../hooks/useAnimals';
 import { useHomeContent } from '../../hooks/useHomeContent';
-import { calculateAge } from '../../lib/supabase';
 import LoadingSpinner from '../ui/LoadingSpinner';
 
 export default function FeaturedBreeds() {
-  const { animals, loading } = useAvailableAnimals();
+  const { animals, loading } = useAnimals();
   const { homeContent } = useHomeContent();
   
   // Get random animals from the library, prioritizing available ones
   const getRandomAnimals = () => {
     if (animals.length === 0) return [];
     
+    // Prioritize available animals, but include others if needed
+    const availableAnimals = animals.filter(animal => animal.status === 'available');
+    const otherAnimals = animals.filter(animal => animal.status !== 'available');
+    
+    // Combine arrays, prioritizing available animals
+    const allAnimals = [...availableAnimals, ...otherAnimals];
+    
     // Shuffle the array and take first 6
-    const shuffled = [...animals].sort(() => Math.random() - 0.5);
+    const shuffled = [...allAnimals].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, 6);
   };
   
@@ -60,7 +66,7 @@ export default function FeaturedBreeds() {
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <h3 className="text-xl font-bold text-gray-900">{animal.name}</h3>
-                      <p className="text-sm text-green-600 font-medium">{getAnimalTypeLabel(animal.animal_type || 'unknown')}</p>
+                      <p className="text-sm text-green-600 font-medium">{getAnimalTypeLabel(animal.type)}</p>
                     </div>
                     <div className="text-right">
                       {animal.price && (
@@ -68,8 +74,13 @@ export default function FeaturedBreeds() {
                           ${animal.price}
                         </span>
                       )}
-                      <div className="mt-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        available
+                      <div className={`mt-1 px-2 py-1 rounded-full text-xs font-medium ${
+                        animal.status === 'available' ? 'bg-green-100 text-green-800' :
+                        animal.status === 'breeding' ? 'bg-blue-100 text-blue-800' :
+                        animal.status === 'sold' ? 'bg-gray-100 text-gray-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {animal.status}
                       </div>
                     </div>
                   </div>
@@ -77,15 +88,15 @@ export default function FeaturedBreeds() {
                   <div className="space-y-2 mb-4">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Breed:</span>
-                      <span className="font-medium text-gray-900">{animal.breed_name}</span>
+                      <span className="font-medium text-gray-900">{animal.breed}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Age:</span>
-                      <span className="font-medium text-gray-900">{animal.age_months || 0} months</span>
+                      <span className="font-medium text-gray-900">{animal.age} months</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Weight:</span>
-                      <span className="font-medium text-gray-900">{animal.weight_lbs} lbs</span>
+                      <span className="font-medium text-gray-900">{animal.weight} lbs</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Gender:</span>

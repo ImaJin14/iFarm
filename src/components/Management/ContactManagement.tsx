@@ -50,8 +50,8 @@ export default function ContactManagement() {
       setAddress(contactContent.address);
       setPhone(contactContent.phone);
       setEmail(contactContent.email);
-      setBusinessHours(contactContent.business_hours || []);
-      setSocialLinks(contactContent.social_links || []);
+      setBusinessHours(contactContent.business_hours as BusinessHour[] || []);
+      setSocialLinks(contactContent.social_links as SocialLink[] || []);
       setMapDescription(contactContent.map_description);
       setNewsletterTitle(contactContent.newsletter_title);
       setNewsletterDescription(contactContent.newsletter_description);
@@ -79,26 +79,15 @@ export default function ContactManagement() {
         newsletter_privacy_text: newsletterPrivacyText
       };
 
-      // Find the existing 'contact' page content entry
-      const { data: existingContent, error: fetchError } = await supabase
-        .from('page_content')
-        .select('id')
-        .eq('page_type', 'contact')
-        .single();
+      const { error } = await supabase
+        .from('contact_content')
+        .update(updateData)
+        .eq('id', contactContent?.id);
 
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      const { error: updateError } = await supabase
-        .from('page_content')
-        .update({ content_data: updateData })
-        .eq('id', existingContent.id);
-
-      if (updateError) throw updateError;
+      if (error) throw error;
 
       setMessage({ type: 'success', text: 'Contact page content updated successfully!' });
-      refetch(); // Re-fetch to ensure local state is in sync
+      refetch();
     } catch (err) {
       setMessage({ 
         type: 'error', 
