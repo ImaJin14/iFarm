@@ -5,10 +5,11 @@ import { useAuth, UserRole } from '../../contexts/AuthContext';
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialMode?: 'signin' | 'signup';
 }
 
-export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
-  const [isSignUp, setIsSignUp] = useState(false);
+export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModalProps) {
+  const [isSignUp, setIsSignUp] = useState(initialMode === 'signup');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +55,15 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setError(null);
     setFormData({ email: '', password: '', fullName: '', role: 'customer' });
   };
+
+  // Reset mode when modal opens/closes
+  React.useEffect(() => {
+    if (isOpen) {
+      setIsSignUp(initialMode === 'signup');
+      setError(null);
+      setFormData({ email: '', password: '', fullName: '', role: 'customer' });
+    }
+  }, [isOpen, initialMode]);
 
   if (!isOpen) return null;
 
@@ -170,7 +180,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 >
                   <option value="customer">Customer - Browse and purchase animals</option>
                   <option value="farm">Farm Manager - Manage farm operations</option>
-                  <option value="administrator">Administrator - Full site control</option>
                 </select>
               </div>
               <p className="mt-2 text-sm text-gray-500">

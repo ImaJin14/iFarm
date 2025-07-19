@@ -6,7 +6,10 @@ import AuthModal from '../Auth/AuthModal';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModal, setAuthModal] = useState<{ show: boolean; mode: 'signin' | 'signup' }>({ 
+    show: false, 
+    mode: 'signin' 
+  });
   const [showUserMenu, setShowUserMenu] = useState(false);
   const location = useLocation();
   const { user, signOut, isAdministrator, isFarmUser } = useAuth();
@@ -118,12 +121,24 @@ export default function Header() {
                 )}
               </div>
             ) : (
-              <button
-                onClick={() => setShowAuthModal(true)}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
-              >
-                Sign In
-              </button>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => {
+                    setAuthModal({ show: true, mode: 'signin' });
+                  }}
+                  className="text-green-600 hover:text-green-700 px-4 py-2 rounded-lg font-medium transition-colors duration-200 border border-green-600 hover:bg-green-50"
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => {
+                    setAuthModal({ show: true, mode: 'signup' });
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
+                >
+                  Sign Up
+                </button>
+              </div>
             )}
           </div>
 
@@ -186,15 +201,26 @@ export default function Header() {
                     </button>
                   </>
                 ) : (
-                  <button
-                    onClick={() => {
-                      setShowAuthModal(true);
-                      setIsMenuOpen(false);
-                    }}
-                    className="block w-full text-left px-3 py-2 text-base font-medium text-green-600 hover:bg-green-50"
-                  >
-                    Sign In
-                  </button>
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => {
+                        setAuthModal({ show: true, mode: 'signin' });
+                        setIsMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-3 py-2 text-base font-medium text-green-600 hover:bg-green-50"
+                    >
+                      Sign In
+                    </button>
+                    <button
+                      onClick={() => {
+                        setAuthModal({ show: true, mode: 'signup' });
+                        setIsMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-3 py-2 text-base font-medium bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    >
+                      Sign Up
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -203,7 +229,11 @@ export default function Header() {
       </div>
       </header>
 
-      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+      <AuthModal 
+        isOpen={authModal.show} 
+        onClose={() => setAuthModal({ show: false, mode: 'signin' })} 
+        initialMode={authModal.mode}
+      />
     </>
   );
 }
