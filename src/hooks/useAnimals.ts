@@ -6,6 +6,9 @@ type Animal = Database['public']['Tables']['animals']['Row'] & {
   breeds?: Database['public']['Tables']['breeds']['Row'];
   facilities?: Database['public']['Tables']['facilities']['Row'];
   age_months?: number;
+  breed?: string; // For backward compatibility
+  weight?: number; // For backward compatibility
+  type?: string; // For backward compatibility
 };
 
 type AvailableAnimal = Database['public']['Views']['available_animals_view']['Row'];
@@ -16,6 +19,26 @@ export interface UseAnimals {
   error: string | null;
   refetch: () => Promise<void>;
 }
+
+// Helper function to calculate age in months
+const calculateAgeMonths = (birthDate: string | null): number => {
+  if (!birthDate) return 0;
+  
+  const birth = new Date(birthDate);
+  const now = new Date();
+  const diffTime = Math.abs(now.getTime() - birth.getTime());
+  const diffMonths = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30.44));
+  return diffMonths;
+};
+
+// Helper function to adapt database data to component expectations
+const adaptAnimalData = (dbAnimal: any): Animal => ({
+  ...dbAnimal,
+  age_months: calculateAgeMonths(dbAnimal.date_of_birth),
+  breed: dbAnimal.breeds?.name || 'Unknown Breed',
+  weight: dbAnimal.weight_lbs,
+  type: dbAnimal.breeds?.type || 'rabbit'
+});
 
 export function useAnimals(): UseAnimals {
   const [animals, setAnimals] = useState<Animal[]>([]);
@@ -31,25 +54,32 @@ export function useAnimals(): UseAnimals {
         .from('animals')
         .select(`
           *,
-          breeds(name, type, characteristics),
-          facilities(name)
+          breeds!inner(
+            id,
+            name,
+            type,
+            characteristics,
+            description,
+            image_url,
+            price_range_min,
+            price_range_max
+          ),
+          facilities(
+            id,
+            name,
+            facility_type
+          )
         `)
         .eq('is_active', true)
-        .order('name');
+        .order('created_at', { ascending: false });
 
       if (supabaseError) {
         throw supabaseError;
       }
 
-      // Calculate age for each animal
-      const animalsWithAge = (data || []).map(animal => ({
-        ...animal,
-        age_months: animal.date_of_birth 
-          ? Math.floor((new Date().getTime() - new Date(animal.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 30.44))
-          : null
-      }));
-
-      setAnimals(animalsWithAge);
+      // Transform data to match component expectations
+      const adaptedAnimals = (data || []).map(adaptAnimalData);
+      setAnimals(adaptedAnimals);
     } catch (err) {
       console.error('Error fetching animals:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch animals');
@@ -77,6 +107,8 @@ export function useAnimal(id: string) {
 
   useEffect(() => {
     const fetchAnimal = async () => {
+      if (!id) return;
+      
       try {
         setLoading(true);
         setError(null);
@@ -85,10 +117,36 @@ export function useAnimal(id: string) {
           .from('animals')
           .select(`
             *,
-            breeds(name, type, characteristics, description),
-            facilities(name),
-            sire:animals!animals_sire_id_fkey(name),
-            dam:animals!animals_dam_id_fkey(name)
+            breeds!inner(
+              id,
+              name,
+              type,
+              characteristics,
+              description,
+              image_url,
+              origin_country,
+              average_weight_min,
+              average_weight_max,
+              average_lifespan_years,
+              primary_uses,
+              care_level
+            ),
+            facilities(
+              id,
+              name,
+              facility_type,
+              location
+            ),
+            sire:animals!animals_sire_id_fkey(
+              id,
+              name,
+              registration_number
+            ),
+            dam:animals!animals_dam_id_fkey(
+              id,
+              name,
+              registration_number
+            )
           `)
           .eq('id', id)
           .eq('is_active', true)
@@ -98,15 +156,10 @@ export function useAnimal(id: string) {
           throw supabaseError;
         }
 
-        // Calculate age
-        const animalWithAge = {
-          ...data,
-          age_months: data.date_of_birth 
-            ? Math.floor((new Date().getTime() - new Date(data.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 30.44))
-            : null
-        };
-
-        setAnimal(animalWithAge);
+        if (data) {
+          const adaptedAnimal = adaptAnimalData(data);
+          setAnimal(adaptedAnimal);
+        }
       } catch (err) {
         console.error('Error fetching animal:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch animal');
@@ -115,9 +168,7 @@ export function useAnimal(id: string) {
       }
     };
 
-    if (id) {
-      fetchAnimal();
-    }
+    fetchAnimal();
   }, [id]);
 
   return {
