@@ -480,5 +480,58 @@ export interface Database {
         }
       }
     }
+    home_content: {
+      Row: {
+        id: string
+        hero_title: string
+        hero_subtitle: string
+        hero_description: string
+        hero_image_url: string
+        hero_badge_text: string
+        hero_features: any
+        featured_section_title: string
+        featured_section_description: string
+        news_section_title: string
+        news_section_description: string
+        cta_buttons: any
+        stats: any
+        created_at: string
+        updated_at: string
+      }
+      Insert: {
+        id?: string
+        hero_title: string
+        hero_subtitle: string
+        hero_description: string
+        hero_image_url: string
+        hero_badge_text: string
+        hero_features?: any
+        featured_section_title: string
+        featured_section_description: string
+        news_section_title: string
+        news_section_description: string
+        cta_buttons?: any
+        stats?: any
+        created_at?: string
+        updated_at?: string
+      }
+      Update: {
+        id?: string
+        hero_title?: string
+        hero_subtitle?: string
+        hero_description?: string
+        hero_image_url?: string
+        hero_badge_text?: string
+        hero_features?: any
+        featured_section_title?: string
+        featured_section_description?: string
+        news_section_title?: string
+        news_section_description?: string
+        cta_buttons?: any
+        stats?: any
+        created_at?: string
+        updated_at?: string
+      }
+    }
   }
 }

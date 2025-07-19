@@ -13,6 +13,7 @@ import AnimalsManagement from '../components/Management/AnimalsManagement';
 import EducationManagement from '../components/Management/EducationManagement';
 import AboutManagement from '../components/Management/AboutManagement';
 import ContactManagement from '../components/Management/ContactManagement';
+import HomeManagement from '../components/Management/HomeManagement';
 
 export default function Management() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -23,6 +24,7 @@ export default function Management() {
 
   const tabs = [
     { id: 'overview', name: 'Overview', icon: BarChart3 },
+    { id: 'home', name: 'Home Page', icon: Heart },
     { id: 'animals', name: 'Animals', icon: Heart },
     { id: 'breeding', name: 'Breeding', icon: Users },
     { id: 'inventory', name: 'Inventory', icon: Package },
@@ -196,6 +198,8 @@ export default function Management() {
     switch (activeTab) {
       case 'overview':
         return renderOverview();
+      case 'home':
+        return <HomeManagement />;
       case 'animals':
         return renderAnimals();
       case 'breeding':

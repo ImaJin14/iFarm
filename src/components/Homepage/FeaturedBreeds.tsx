@@ -2,10 +2,12 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { useBreeds } from '../../hooks/useBreeds';
+import { useHomeContent } from '../../hooks/useHomeContent';
 import LoadingSpinner from '../ui/LoadingSpinner';
 
 export default function FeaturedBreeds() {
   const { breeds, loading } = useBreeds();
+  const { homeContent } = useHomeContent();
   
   // Get a mix of featured animals from different types
   const featuredBreeds = breeds.slice(0, 6);
@@ -23,11 +25,10 @@ export default function FeaturedBreeds() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-            Our Featured Animals
+            {homeContent?.featured_section_title || 'Our Featured Animals'}
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Carefully selected breeds across rabbits, guinea pigs, dogs, cats, and fowls, 
-            each known for their exceptional qualities, health, and temperament.
+            {homeContent?.featured_section_description || 'Carefully selected breeds across rabbits, guinea pigs, dogs, cats, and fowls, each known for their exceptional qualities, health, and temperament.'}
           </p>
         </div>
 
