@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Users, Package, Heart, BarChart3, Settings, Plus, Edit, Trash2, Calendar, TrendingUp, Book, Info, Phone } from 'lucide-react';
+import { Users, Package, Heart, BarChart3, Settings, Plus, Edit, Trash2, Calendar, TrendingUp, Book, Info, Phone, FileText } from 'lucide-react';
 import { useAnimals } from '../hooks/useAnimals';
 import { useBreedingRecords } from '../hooks/useBreedingRecords';
 import { useInventory } from '../hooks/useInventory';
@@ -14,6 +15,7 @@ import EducationManagement from '../components/Management/EducationManagement';
 import AboutManagement from '../components/Management/AboutManagement';
 import ContactManagement from '../components/Management/ContactManagement';
 import HomeManagement from '../components/Management/HomeManagement';
+import NewsManagement from '../components/Management/NewsManagement';
 
 export default function Management() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -29,6 +31,7 @@ export default function Management() {
     { id: 'breeding', name: 'Breeding', icon: Users },
     { id: 'inventory', name: 'Inventory', icon: Package },
     { id: 'biproducts', name: 'Bi-Products', icon: Package },
+    { id: 'news', name: 'News', icon: FileText },
     { id: 'education', name: 'Education', icon: Book },
     { id: 'about', name: 'About Page', icon: Info },
     { id: 'contact', name: 'Contact Page', icon: Phone },
@@ -214,6 +217,8 @@ export default function Management() {
         return <AboutManagement />;
       case 'contact':
         return <ContactManagement />;
+      case 'news':
+        return <NewsManagement />;
       case 'settings':
         return (
           <div className="text-center py-12">
