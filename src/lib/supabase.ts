@@ -479,6 +479,35 @@ export interface Database {
           updated_at?: string
         }
       }
+      users: {
+        Row: {
+          id: string
+          email: string
+          full_name: string | null
+          avatar_url: string | null
+          created_at: string
+          updated_at: string
+          role: 'administrator' | 'farm' | 'customer'
+        }
+        Insert: {
+          id?: string
+          email: string
+          full_name?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          updated_at?: string
+          role?: 'administrator' | 'farm' | 'customer'
+        }
+        Update: {
+          id?: string
+          email?: string
+          full_name?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          updated_at?: string
+          role?: 'administrator' | 'farm' | 'customer'
+        }
+      }
     }
     home_content: {
       Row: {

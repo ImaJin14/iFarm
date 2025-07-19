@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Users, Package, Heart, BarChart3, Settings, Plus, Edit, Trash2, Calendar, TrendingUp, Book, Info, Phone, FileText } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 import { useAnimals } from '../hooks/useAnimals';
 import { useBreedingRecords } from '../hooks/useBreedingRecords';
 import { useInventory } from '../hooks/useInventory';
@@ -16,9 +17,11 @@ import ContactManagement from '../components/Management/ContactManagement';
 import HomeManagement from '../components/Management/HomeManagement';
 import NewsManagement from '../components/Management/NewsManagement';
 import SettingsManagement from '../components/Management/SettingsManagement';
+import Dashboard from '../components/Management/Dashboard';
 
 export default function Management() {
   const [activeTab, setActiveTab] = useState('overview');
+  const { isAdministrator, isFarmUser } = useAuth();
   const { animals, loading: animalsLoading, error: animalsError } = useAnimals();
   const { breedingRecords, loading: breedingLoading, error: breedingError } = useBreedingRecords();
   const { inventory, loading: inventoryLoading, error: inventoryError } = useInventory();
@@ -26,16 +29,22 @@ export default function Management() {
 
   const tabs = [
     { id: 'overview', name: 'Overview', icon: BarChart3 },
-    { id: 'home', name: 'Home Page', icon: Heart },
+    // Administrator-only tabs
+    ...(isAdministrator() ? [
+      { id: 'home', name: 'Home Page', icon: Heart },
+      { id: 'about', name: 'About Page', icon: Info },
+      { id: 'contact', name: 'Contact Page', icon: Phone },
+      { id: 'settings', name: 'Settings', icon: Settings }
+    ] : []),
+    // Farm user tabs
+    ...(isFarmUser() || isAdministrator() ? [
     { id: 'animals', name: 'Animals', icon: Heart },
     { id: 'breeding', name: 'Breeding', icon: Users },
     { id: 'inventory', name: 'Inventory', icon: Package },
     { id: 'biproducts', name: 'Bi-Products', icon: Package },
     { id: 'news', name: 'News', icon: FileText },
-    { id: 'education', name: 'Education', icon: Book },
-    { id: 'about', name: 'About Page', icon: Info },
-    { id: 'contact', name: 'Contact Page', icon: Phone },
-    { id: 'settings', name: 'Settings', icon: Settings }
+      { id: 'education', name: 'Education', icon: Book }
+    ] : [])
   ];
 
   const getStatusColor = (status: string) => {
