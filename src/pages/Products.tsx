@@ -54,13 +54,13 @@ export default function Products() {
   };
 
   const filteredAnimals = animals.filter(animal => {
-    if (selectedAnimalType !== 'all' && animal.type !== selectedAnimalType) return false;
+    if (selectedAnimalType !== 'all' && animal.breeds?.type !== selectedAnimalType) return false;
     if (selectedCategory !== 'all' && !animal.description.toLowerCase().includes(selectedCategory)) return false;
     return true;
   });
 
   const filteredAvailableAnimals = availableAnimals.filter(animal => {
-    if (selectedAnimalType !== 'all' && animal.type !== selectedAnimalType) return false;
+    if (selectedAnimalType !== 'all' && animal.animal_type !== selectedAnimalType) return false;
     return true;
   });
 
@@ -176,7 +176,7 @@ export default function Products() {
                     </div>
                     <div className="absolute top-4 left-4">
                       <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
-                        {getAnimalTypeLabel(animal.type).slice(0, -1)}
+                        {getAnimalTypeLabel(animal.breeds?.type || 'rabbit').slice(0, -1)}
                       </span>
                     </div>
                     <div className="absolute bottom-4 left-4">
@@ -197,17 +197,17 @@ export default function Products() {
                       )}
                     </div>
                     
-                    <p className="text-green-600 font-medium mb-2">{animal.breed}</p>
+                    <p className="text-green-600 font-medium mb-2">{animal.breeds?.name || 'Unknown Breed'}</p>
                     <p className="text-gray-600 mb-4">{animal.description}</p>
                     
                     <div className="space-y-2 mb-4">
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Age:</span>
-                        <span className="font-medium text-gray-900">{animal.age} months</span>
+                        <span className="font-medium text-gray-900">{animal.age_months || 0} months</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Weight:</span>
-                        <span className="font-medium text-gray-900">{animal.weight} lbs</span>
+                        <span className="font-medium text-gray-900">{animal.weight_lbs} lbs</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Gender:</span>
@@ -234,7 +234,7 @@ export default function Products() {
                     
                     <div className="flex space-x-3">
                       <Link
-                        to={`/contact?subject=Inquiry about ${animal.name}&message=I am interested in ${animal.name}, a ${getAnimalTypeLabel(animal.type).toLowerCase().slice(0, -1)}.`}
+                        to={`/contact?subject=Inquiry about ${animal.name}&message=I am interested in ${animal.name}, a ${getAnimalTypeLabel(animal.breeds?.type || 'rabbit').toLowerCase().slice(0, -1)}.`}
                         className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center"
                       >
                         <ShoppingCart className="h-4 w-4 mr-2" />
@@ -285,7 +285,7 @@ export default function Products() {
                     />
                     <div className="absolute top-4 left-4">
                       <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
-                        {getAnimalTypeLabel(animal.type).slice(0, -1)}
+                        {getAnimalTypeLabel(animal.animal_type || 'rabbit').slice(0, -1)}
                       </span>
                     </div>
                   </div>
@@ -293,7 +293,7 @@ export default function Products() {
                     <div className="flex justify-between items-start mb-3">
                       <div>
                         <h3 className="text-xl font-bold text-gray-900">{animal.name}</h3>
-                        <p className="text-green-600 font-medium">{animal.breed}</p>
+                        <p className="text-green-600 font-medium">{animal.breed_name || 'Unknown Breed'}</p>
                       </div>
                       {animal.price && (
                         <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-bold">
@@ -307,11 +307,11 @@ export default function Products() {
                     <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
                       <div>
                         <span className="text-gray-500">Age:</span>
-                        <span className="font-medium text-gray-900 ml-2">{animal.age} months</span>
+                        <span className="font-medium text-gray-900 ml-2">{animal.age_months || 0} months</span>
                       </div>
                       <div>
                         <span className="text-gray-500">Weight:</span>
-                        <span className="font-medium text-gray-900 ml-2">{animal.weight} lbs</span>
+                        <span className="font-medium text-gray-900 ml-2">{animal.weight_lbs} lbs</span>
                       </div>
                       <div>
                         <span className="text-gray-500">Gender:</span>
@@ -324,7 +324,7 @@ export default function Products() {
                     </div>
                     
                     <Link
-                      to={`/contact?subject=Inquiry about ${animal.name}&message=I am interested in ${animal.name}, a ${getAnimalTypeLabel(animal.type).toLowerCase().slice(0, -1)}.`}
+                      to={`/contact?subject=Inquiry about ${animal.name}&message=I am interested in ${animal.name}, a ${getAnimalTypeLabel(animal.animal_type || 'rabbit').toLowerCase().slice(0, -1)}.`}
                       className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 block text-center"
                     >
                       Contact About {animal.name}

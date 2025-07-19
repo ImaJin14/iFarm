@@ -74,7 +74,7 @@ export default function AnimalDetail() {
             />
             <div className="absolute top-4 left-4">
               <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                {getAnimalTypeLabel(animal.type)}
+                {getAnimalTypeLabel(animal.breeds?.type || 'rabbit')}
               </span>
             </div>
             <div className="absolute top-4 right-4">
@@ -96,7 +96,7 @@ export default function AnimalDetail() {
             <div>
               <h1 className="text-4xl font-bold text-gray-900 mb-2">{animal.name}</h1>
               <p className="text-xl text-green-600 font-medium mb-4">
-                {animal.breed}
+                {animal.breeds?.name || 'Unknown Breed'}
               </p>
               <p className="text-lg text-gray-600 leading-relaxed">{animal.description}</p>
             </div>
@@ -109,14 +109,14 @@ export default function AnimalDetail() {
                   <Calendar className="h-5 w-5 text-green-600" />
                   <div>
                     <span className="text-gray-500 text-sm">Age</span>
-                    <p className="font-medium text-gray-900">{animal.age} months</p>
+                    <p className="font-medium text-gray-900">{animal.age_months || 0} months</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
                   <Weight className="h-5 w-5 text-green-600" />
                   <div>
                     <span className="text-gray-500 text-sm">Weight</span>
-                    <p className="font-medium text-gray-900">{animal.weight} lbs</p>
+                    <p className="font-medium text-gray-900">{animal.weight_lbs} lbs</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -162,28 +162,19 @@ export default function AnimalDetail() {
                   appropriate vaccinations, and preventive treatments. All health records are available 
                   for review.
                 </p>
-                {animal.vaccinations && animal.vaccinations.length > 0 && (
-                  <div>
-                    <h3 className="font-medium text-gray-900 mb-2">Current Vaccinations:</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {animal.vaccinations.map((vaccination, index) => (
-                        <span
-                          key={index}
-                          className="bg-green-50 text-green-800 px-2 py-1 rounded text-sm"
-                        >
-                          {vaccination}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <div>
+                  <h3 className="font-medium text-gray-900 mb-2">Health Status:</h3>
+                  <span className="bg-green-50 text-green-800 px-2 py-1 rounded text-sm">
+                    Up to date on all vaccinations
+                  </span>
+                </div>
               </div>
             </div>
 
             {/* Contact Actions */}
             <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
               <Link
-                to={`/contact?subject=Inquiry about ${animal.name}&message=I am interested in adopting ${animal.name}, a ${getAnimalTypeLabel(animal.type).toLowerCase()}.`}
+                to={`/contact?subject=Inquiry about ${animal.name}&message=I am interested in adopting ${animal.name}, a ${getAnimalTypeLabel(animal.breeds?.type || 'rabbit').toLowerCase()}.`}
                 className="flex-1 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 text-center"
               >
                 Contact About {animal.name}

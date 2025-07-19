@@ -107,15 +107,30 @@ export default function BreedDetail() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Average Weight:</span>
-                  <span className="font-medium text-gray-900">{breed.average_weight}</span>
+                  <span className="font-medium text-gray-900">
+                    {breed.average_weight_min && breed.average_weight_max 
+                      ? `${breed.average_weight_min} - ${breed.average_weight_max} lbs`
+                      : 'Varies'
+                    }
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Primary Use:</span>
-                  <span className="font-medium text-gray-900">{breed.primary_use}</span>
+                  <span className="font-medium text-gray-900">
+                    {breed.primary_uses && breed.primary_uses.length > 0 
+                      ? breed.primary_uses[0] 
+                      : 'Companion'
+                    }
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Price Range:</span>
-                  <span className="font-medium text-green-600">{breed.price_range}</span>
+                  <span className="font-medium text-green-600">
+                    {breed.price_range_min && breed.price_range_max 
+                      ? `$${breed.price_range_min} - $${breed.price_range_max}`
+                      : 'Contact for pricing'
+                    }
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Animal Type:</span>
@@ -131,12 +146,12 @@ export default function BreedDetail() {
                 Characteristics
               </h2>
               <div className="grid grid-cols-2 gap-3">
-                {breed.characteristics.map((char, index) => (
+                {(Array.isArray(breed.characteristics) ? breed.characteristics : []).map((char, index) => (
                   <div
                     key={index}
                     className="bg-green-50 text-green-800 px-3 py-2 rounded-lg text-sm font-medium text-center"
                   >
-                    {char}
+                    {typeof char === 'string' ? char : String(char)}
                   </div>
                 ))}
               </div>
