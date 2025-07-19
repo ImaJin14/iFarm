@@ -24,6 +24,7 @@ export function useBiProducts(): UseBiProducts {
       const { data, error: supabaseError } = await supabase
         .from('bi_products')
         .select('*')
+        .eq('is_active', true)
         .order('name');
 
       if (supabaseError) {

@@ -2,7 +2,13 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/supabase';
 
-type Animal = Database['public']['Tables']['animals']['Row'];
+type Animal = Database['public']['Tables']['animals']['Row'] & {
+  breeds?: Database['public']['Tables']['breeds']['Row'];
+  facilities?: Database['public']['Tables']['facilities']['Row'];
+  age_months?: number;
+};
+
+type AvailableAnimal = Database['public']['Views']['available_animals_view']['Row'];
 
 export interface UseAnimals {
   animals: Animal[];
@@ -23,14 +29,27 @@ export function useAnimals(): UseAnimals {
       
       const { data, error: supabaseError } = await supabase
         .from('animals')
-        .select('*')
+        .select(`
+          *,
+          breeds(name, type, characteristics),
+          facilities(name)
+        `)
+        .eq('is_active', true)
         .order('name');
 
       if (supabaseError) {
         throw supabaseError;
       }
 
-      setAnimals(data || []);
+      // Calculate age for each animal
+      const animalsWithAge = (data || []).map(animal => ({
+        ...animal,
+        age_months: animal.date_of_birth 
+          ? Math.floor((new Date().getTime() - new Date(animal.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 30.44))
+          : null
+      }));
+
+      setAnimals(animalsWithAge);
     } catch (err) {
       console.error('Error fetching animals:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch animals');
@@ -64,15 +83,30 @@ export function useAnimal(id: string) {
         
         const { data, error: supabaseError } = await supabase
           .from('animals')
-          .select('*')
+          .select(`
+            *,
+            breeds(name, type, characteristics, description),
+            facilities(name),
+            sire:animals!animals_sire_id_fkey(name),
+            dam:animals!animals_dam_id_fkey(name)
+          `)
           .eq('id', id)
+          .eq('is_active', true)
           .single();
 
         if (supabaseError) {
           throw supabaseError;
         }
 
-        setAnimal(data);
+        // Calculate age
+        const animalWithAge = {
+          ...data,
+          age_months: data.date_of_birth 
+            ? Math.floor((new Date().getTime() - new Date(data.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 30.44))
+            : null
+        };
+
+        setAnimal(animalWithAge);
       } catch (err) {
         console.error('Error fetching animal:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch animal');
@@ -94,7 +128,7 @@ export function useAnimal(id: string) {
 }
 
 export function useAvailableAnimals() {
-  const [animals, setAnimals] = useState<Animal[]>([]);
+  const [animals, setAnimals] = useState<AvailableAnimal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -104,9 +138,8 @@ export function useAvailableAnimals() {
       setError(null);
       
       const { data, error: supabaseError } = await supabase
-        .from('animals')
+        .from('available_animals_view')
         .select('*')
-        .eq('status', 'available')
         .order('name');
 
       if (supabaseError) {

@@ -38,7 +38,6 @@ export type guide_difficulty = 'Beginner' | 'Intermediate' | 'Advanced'
 export type transaction_type = 'sale' | 'purchase' | 'expense' | 'income' | 'refund' | 'fee'
 export type payment_method = 'cash' | 'check' | 'credit_card' | 'bank_transfer' | 'paypal' | 'other'
 
-
 export interface Database {
   public: {
     Tables: {
@@ -120,6 +119,7 @@ export interface Database {
           is_active: boolean | null
           is_breeding_quality: boolean | null
           is_for_sale: boolean | null
+          markings: string | null
           microchip_number: string | null
           name: string
           notes: string | null
@@ -156,6 +156,7 @@ export interface Database {
           is_active?: boolean | null
           is_breeding_quality?: boolean | null
           is_for_sale?: boolean | null
+          markings?: string | null
           microchip_number?: string | null
           name: string
           notes?: string | null
@@ -192,6 +193,7 @@ export interface Database {
           is_active?: boolean | null
           is_breeding_quality?: boolean | null
           is_for_sale?: boolean | null
+          markings?: string | null
           microchip_number?: string | null
           name?: string
           notes?: string | null
@@ -262,12 +264,12 @@ export interface Database {
           production_capacity_per_month: number | null
           seasonal_months: number[] | null
           source_animals: string[] | null
+          storage_requirements: string | null
           type: biproduct_type
           unit: string
           unit_description: string | null
           updated_at: string | null
           usage_instructions: string | null
-          storage_requirements: string | null
         }
         Insert: {
           availability?: availability_status | null
@@ -287,12 +289,12 @@ export interface Database {
           production_capacity_per_month?: number | null
           seasonal_months?: number[] | null
           source_animals?: string[] | null
+          storage_requirements?: string | null
           type: biproduct_type
           unit: string
           unit_description?: string | null
           updated_at?: string | null
           usage_instructions?: string | null
-          storage_requirements?: string | null
         }
         Update: {
           availability?: availability_status | null
@@ -312,12 +314,12 @@ export interface Database {
           production_capacity_per_month?: number | null
           seasonal_months?: number[] | null
           source_animals?: string[] | null
+          storage_requirements?: string | null
           type?: biproduct_type
           unit?: string
           unit_description?: string | null
           updated_at?: string | null
           usage_instructions?: string | null
-          storage_requirements?: string | null
         }
         Relationships: []
       }
@@ -954,12 +956,12 @@ export interface Database {
       }
       health_records: {
         Row: {
+          animal_id: string
           attachments: string[] | null
           cost: number | null
           created_at: string | null
           description: string | null
           diagnosis: string | null
-          animal_id: string
           follow_up_date: string | null
           follow_up_required: boolean | null
           id: string
@@ -974,12 +976,12 @@ export interface Database {
           veterinarian_id: string | null
         }
         Insert: {
+          animal_id: string
           attachments?: string[] | null
           cost?: number | null
           created_at?: string | null
           description?: string | null
           diagnosis?: string | null
-          animal_id: string
           follow_up_date?: string | null
           follow_up_required?: boolean | null
           id?: string
@@ -994,12 +996,12 @@ export interface Database {
           veterinarian_id?: string | null
         }
         Update: {
+          animal_id?: string
           attachments?: string[] | null
           cost?: number | null
           created_at?: string | null
           description?: string | null
           diagnosis?: string | null
-          animal_id?: string
           follow_up_date?: string | null
           follow_up_required?: boolean | null
           id?: string
@@ -1332,7 +1334,6 @@ export interface Database {
         Row: {
           alt_text: string | null
           caption: string | null
-          created_at: string | null
           filename: string
           file_size_bytes: number | null
           height_px: number | null
@@ -1350,7 +1351,6 @@ export interface Database {
         Insert: {
           alt_text?: string | null
           caption?: string | null
-          created_at?: string | null
           filename: string
           file_size_bytes?: number | null
           height_px?: number | null
@@ -1368,7 +1368,6 @@ export interface Database {
         Update: {
           alt_text?: string | null
           caption?: string | null
-          created_at?: string | null
           filename?: string
           file_size_bytes?: number | null
           height_px?: number | null
@@ -1594,10 +1593,10 @@ export interface Database {
           id: string
           is_read: boolean | null
           message: string
+          notification_type: string
           priority: string | null
           read_at: string | null
           recipient_id: string | null
-          notification_type: string
           title: string
         }
         Insert: {
@@ -1608,10 +1607,10 @@ export interface Database {
           id?: string
           is_read?: boolean | null
           message: string
+          notification_type: string
           priority?: string | null
           read_at?: string | null
           recipient_id?: string | null
-          notification_type: string
           title: string
         }
         Update: {
@@ -1622,10 +1621,10 @@ export interface Database {
           id?: string
           is_read?: boolean | null
           message?: string
+          notification_type?: string
           priority?: string | null
           read_at?: string | null
           recipient_id?: string | null
-          notification_type?: string
           title?: string
         }
         Relationships: [
@@ -1995,7 +1994,6 @@ export interface Database {
       available_animals_view: {
         Row: {
           age_months: number | null
-          additional_images: string[] | null
           animal_type: animal_type | null
           breed_characteristics: Json | null
           breed_name: string | null
@@ -2016,7 +2014,6 @@ export interface Database {
       }
       breeding_performance_view: {
         Row: {
-          age_months: number | null
           animal_id: string | null
           avg_litter_size: number | null
           current_age_months: number | null

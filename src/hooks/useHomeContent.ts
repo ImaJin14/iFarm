@@ -2,7 +2,22 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/supabase';
 
-type HomeContent = Database['public']['Tables']['home_content']['Row'];
+type PageContent = Database['public']['Tables']['page_content']['Row'];
+
+interface HomeContent {
+  hero_title: string;
+  hero_subtitle: string;
+  hero_description: string;
+  hero_image_url: string;
+  hero_badge_text: string;
+  hero_features: Array<{ title: string; icon: string }>;
+  featured_section_title: string;
+  featured_section_description: string;
+  news_section_title: string;
+  news_section_description: string;
+  cta_buttons: Array<{ text: string; link: string; type: string }>;
+  stats: Array<{ label: string; value: string; icon: string }>;
+}
 
 export interface UseHomeContent {
   homeContent: HomeContent | null;
@@ -22,15 +37,19 @@ export function useHomeContent(): UseHomeContent {
       setError(null);
       
       const { data, error: supabaseError } = await supabase
-        .from('home_content')
+        .from('page_content')
         .select('*')
+        .eq('page_type', 'home')
+        .eq('is_published', true)
         .single();
 
       if (supabaseError) {
         throw supabaseError;
       }
 
-      setHomeContent(data);
+      // Extract content from JSONB data
+      const contentData = data.content_data as any;
+      setHomeContent(contentData);
     } catch (err) {
       console.error('Error fetching home content:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch home content');

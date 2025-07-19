@@ -24,6 +24,7 @@ export function useBreeds(): UseBreeds {
       const { data, error: supabaseError } = await supabase
         .from('breeds')
         .select('*')
+        .eq('is_active', true)
         .order('name');
 
       if (supabaseError) {
@@ -66,6 +67,7 @@ export function useBreed(id: string) {
           .from('breeds')
           .select('*')
           .eq('id', id)
+          .eq('is_active', true)
           .single();
 
         if (supabaseError) {

@@ -66,7 +66,7 @@ export default function FeaturedBreeds() {
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <h3 className="text-xl font-bold text-gray-900">{animal.name}</h3>
-                      <p className="text-sm text-green-600 font-medium">{getAnimalTypeLabel(animal.type)}</p>
+                      <p className="text-sm text-green-600 font-medium">{getAnimalTypeLabel(animal.breeds?.type || 'rabbit')}</p>
                     </div>
                     <div className="text-right">
                       {animal.price && (
@@ -88,15 +88,15 @@ export default function FeaturedBreeds() {
                   <div className="space-y-2 mb-4">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Breed:</span>
-                      <span className="font-medium text-gray-900">{animal.breed}</span>
+                      <span className="font-medium text-gray-900">{animal.breeds?.name || 'Unknown'}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Age:</span>
-                      <span className="font-medium text-gray-900">{animal.age} months</span>
+                      <span className="font-medium text-gray-900">{animal.age_months || 0} months</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Weight:</span>
-                      <span className="font-medium text-gray-900">{animal.weight} lbs</span>
+                      <span className="font-medium text-gray-900">{animal.weight_lbs} lbs</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Gender:</span>
