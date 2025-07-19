@@ -8,7 +8,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 
 export default function Management() {
   const { animals, loading: animalsLoading } = useAnimals();
-  const { breedingRecords, loading: breedingLoading } = useBreedingRecords();
+  const { breedingRecords, loading: breedingLoading, refetch } = useBreedingRecords();
   const { inventory, loading: inventoryLoading, refetch: refetchInventory } = useInventory();
   const [activeTab, setActiveTab] = useState('overview');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
