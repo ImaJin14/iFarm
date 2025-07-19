@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, Heart, ShoppingCart, Filter, Leaf, CheckCircle, Clock } from 'lucide-react';
-import { useBreeds } from '../hooks/useBreeds';
-import { useAvailableAnimals } from '../hooks/useAnimals';
+import { useAnimals, useAvailableAnimals } from '../hooks/useAnimals';
 import { useBiProducts } from '../hooks/useBiProducts';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ErrorMessage from '../components/ui/ErrorMessage';
 
 export default function Products() {
-  const { breeds, loading: breedsLoading, error: breedsError, refetch } = useBreeds();
+  const { animals, loading: animalsLoading, error: animalsError, refetch } = useAnimals();
   const { animals: availableAnimals, loading: animalsLoading, error: animalsError } = useAvailableAnimals();
   const { biProducts, loading: biProductsLoading, error: biProductsError } = useBiProducts();
   const [selectedAnimalType, setSelectedAnimalType] = useState('all');
@@ -54,9 +53,9 @@ export default function Products() {
     );
   };
 
-  const filteredBreeds = breeds.filter(breed => {
-    if (selectedAnimalType !== 'all' && breed.type !== selectedAnimalType) return false;
-    if (selectedCategory !== 'all' && !breed.primaryUse.toLowerCase().includes(selectedCategory)) return false;
+  const filteredAnimals = animals.filter(animal => {
+    if (selectedAnimalType !== 'all' && animal.type !== selectedAnimalType) return false;
+    if (selectedCategory !== 'all' && !animal.description.toLowerCase().includes(selectedCategory)) return false;
     return true;
   });
 
@@ -145,39 +144,39 @@ export default function Products() {
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Available Breeds</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">All Farm Animals</h2>
             <p className="text-xl text-gray-600">
-              {selectedAnimalType === 'all' ? 'All our animal breeds' : getAnimalTypeLabel(selectedAnimalType)}
+              {selectedAnimalType === 'all' ? 'All our farm animals' : getAnimalTypeLabel(selectedAnimalType)}
             </p>
           </div>
 
-          {breedsLoading ? (
+          {animalsLoading ? (
             <div className="flex justify-center py-12">
               <LoadingSpinner size="lg" />
             </div>
-          ) : breedsError ? (
-            <ErrorMessage message={breedsError} onRetry={refetch} />
+          ) : animalsError ? (
+            <ErrorMessage message={animalsError} onRetry={refetch} />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredBreeds.map((breed) => (
-                <div key={breed.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 group">
+              {filteredAnimals.map((animal) => (
+                <div key={animal.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 group">
                   <div className="relative overflow-hidden">
                     <img
-                      src={breed.image_url}
-                      alt={breed.name}
+                      src={animal.image_url}
+                      alt={animal.name}
                       className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                     <div className="absolute top-4 right-4">
                       <button 
-                        onClick={() => toggleFavorite(breed.id)}
+                        onClick={() => toggleFavorite(animal.id)}
                         className="bg-white p-2 rounded-full shadow-lg hover:bg-gray-50 transition-colors duration-200"
                       >
-                        <Heart className={`h-5 w-5 ${favorites.includes(breed.id) ? 'text-red-500 fill-current' : 'text-gray-400 hover:text-red-500'}`} />
+                        <Heart className={`h-5 w-5 ${favorites.includes(animal.id) ? 'text-red-500 fill-current' : 'text-gray-400 hover:text-red-500'}`} />
                       </button>
                     </div>
                     <div className="absolute top-4 left-4">
                       <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
-                        {getAnimalTypeLabel(breed.type).slice(0, -1)}
+                        {getAnimalTypeLabel(animal.type).slice(0, -1)}
                       </span>
                     </div>
                     <div className="absolute bottom-4 left-4">
@@ -190,46 +189,59 @@ export default function Products() {
                   
                   <div className="p-6">
                     <div className="flex justify-between items-start mb-3">
-                      <h3 className="text-xl font-bold text-gray-900">{breed.name}</h3>
-                      <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                        {breed.price_range}
-                      </span>
+                      <h3 className="text-xl font-bold text-gray-900">{animal.name}</h3>
+                      {animal.price && (
+                        <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                          ${animal.price}
+                        </span>
+                      )}
                     </div>
                     
-                    <p className="text-gray-600 mb-4">{breed.description}</p>
+                    <p className="text-green-600 font-medium mb-2">{animal.breed}</p>
+                    <p className="text-gray-600 mb-4">{animal.description}</p>
                     
                     <div className="space-y-2 mb-4">
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Average Weight:</span>
-                        <span className="font-medium text-gray-900">{breed.average_weight}</span>
+                        <span className="text-gray-500">Age:</span>
+                        <span className="font-medium text-gray-900">{animal.age} months</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Primary Use:</span>
-                        <span className="font-medium text-gray-900">{breed.primary_use}</span>
+                        <span className="text-gray-500">Weight:</span>
+                        <span className="font-medium text-gray-900">{animal.weight} lbs</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Gender:</span>
+                        <span className="font-medium text-gray-900 capitalize">{animal.gender}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Color:</span>
+                        <span className="font-medium text-gray-900">{animal.color}</span>
                       </div>
                     </div>
                     
-                    <div className="flex flex-wrap gap-2 mb-6">
-                      {breed.characteristics.slice(0, 2).map((char, index) => (
-                        <span
-                          key={index}
-                          className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs"
-                        >
-                          {char}
-                        </span>
-                      ))}
-                    </div>
+                    {animal.temperament && animal.temperament.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-6">
+                        {animal.temperament.slice(0, 2).map((trait, index) => (
+                          <span
+                            key={index}
+                            className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs"
+                          >
+                            {trait}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     
                     <div className="flex space-x-3">
                       <Link
-                        to={`/contact?subject=Inquiry about ${breed.name}&message=I am interested in learning more about the ${breed.name} breed.`}
+                        to={`/contact?subject=Inquiry about ${animal.name}&message=I am interested in ${animal.name}, a ${getAnimalTypeLabel(animal.type).toLowerCase().slice(0, -1)}.`}
                         className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center"
                       >
                         <ShoppingCart className="h-4 w-4 mr-2" />
                         Inquire Now
                       </Link>
                       <Link
-                        to={`/breeds/${breed.id}`}
+                        to={`/animals/${animal.id}`}
                         className="px-4 py-2 border border-green-600 text-green-600 rounded-lg font-medium hover:bg-green-50 transition-colors duration-200"
                       >
                         Learn More
