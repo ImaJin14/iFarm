@@ -14,6 +14,7 @@ export default function Management() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [showAddItemModal, setShowAddItemModal] = useState(false);
+  const [showAddBreedingRecordModal, setShowAddBreedingRecordModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -25,6 +26,17 @@ export default function Management() {
     cost: 0,
     supplier: '',
     last_restocked: new Date().toISOString().split('T')[0]
+  });
+  const [breedingRecordFormData, setBreedingRecordFormData] = useState({
+    sire_id: '',
+    dam_id: '',
+    animal_type: 'rabbit' as 'rabbit' | 'guinea-pig' | 'dog' | 'cat' | 'fowl',
+    breeding_date: new Date().toISOString().split('T')[0],
+    expected_birth: '',
+    actual_birth: '',
+    litter_size: '',
+    status: 'planned' as 'planned' | 'bred' | 'born' | 'weaned',
+    notes: ''
   });
 
   const handleLogin = (e: React.FormEvent) => {
@@ -41,6 +53,14 @@ export default function Management() {
     setFormData(prev => ({
       ...prev,
       [name]: type === 'number' ? parseFloat(value) || 0 : value
+    }));
+  };
+
+  const handleBreedingRecordInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target;
+    setBreedingRecordFormData(prev => ({
+      ...prev,
+      [name]: type === 'number' ? (value === '' ? '' : parseInt(value)) : value
     }));
   };
 
@@ -97,6 +117,71 @@ export default function Management() {
     } catch (error) {
       console.error('Error adding inventory item:', error);
       alert('Failed to add inventory item. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleAddBreedingRecord = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      // Calculate expected birth date if not provided
+      let expectedBirth = breedingRecordFormData.expected_birth;
+      if (!expectedBirth && breedingRecordFormData.breeding_date) {
+        const breedingDate = new Date(breedingRecordFormData.breeding_date);
+        // Add gestation period based on animal type
+        const gestationDays = {
+          'rabbit': 31,
+          'guinea-pig': 68,
+          'dog': 63,
+          'cat': 64,
+          'fowl': 21
+        };
+        breedingDate.setDate(breedingDate.getDate() + gestationDays[breedingRecordFormData.animal_type]);
+        expectedBirth = breedingDate.toISOString().split('T')[0];
+      }
+
+      const { error } = await supabase
+        .from('breeding_records')
+        .insert([{
+          sire_id: breedingRecordFormData.sire_id,
+          dam_id: breedingRecordFormData.dam_id,
+          animal_type: breedingRecordFormData.animal_type,
+          breeding_date: breedingRecordFormData.breeding_date,
+          expected_birth: expectedBirth,
+          actual_birth: breedingRecordFormData.actual_birth || null,
+          litter_size: breedingRecordFormData.litter_size ? parseInt(breedingRecordFormData.litter_size) : null,
+          status: breedingRecordFormData.status,
+          notes: breedingRecordFormData.notes
+        }]);
+
+      if (error) {
+        throw error;
+      }
+
+      // Reset form and close modal
+      setBreedingRecordFormData({
+        sire_id: '',
+        dam_id: '',
+        animal_type: 'rabbit',
+        breeding_date: new Date().toISOString().split('T')[0],
+        expected_birth: '',
+        actual_birth: '',
+        litter_size: '',
+        status: 'planned',
+        notes: ''
+      });
+      setShowAddBreedingRecordModal(false);
+      
+      // Refetch breeding records data
+      await refetch();
+      
+      alert('Breeding record added successfully!');
+    } catch (error) {
+      console.error('Error adding breeding record:', error);
+      alert('Failed to add breeding record. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -412,7 +497,11 @@ export default function Management() {
             <div className="bg-white rounded-xl shadow-lg p-6">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold text-gray-900">Breeding Records</h3>
-                <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
+                <button 
+                  onClick={() => setShowAddBreedingRecordModal(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
                   New Breeding Record
                 </button>
               </div>
@@ -673,6 +762,206 @@ export default function Management() {
                     <>
                       <Plus className="h-4 w-4 mr-2" />
                       Add Item
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Breeding Record Modal */}
+      {showAddBreedingRecordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Add New Breeding Record</h2>
+              <button
+                onClick={() => setShowAddBreedingRecordModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddBreedingRecord} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="sire_id" className="block text-sm font-medium text-gray-700 mb-2">
+                    Sire ID *
+                  </label>
+                  <input
+                    type="text"
+                    id="sire_id"
+                    name="sire_id"
+                    required
+                    value={breedingRecordFormData.sire_id}
+                    onChange={handleBreedingRecordInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="e.g., BUCK001"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="dam_id" className="block text-sm font-medium text-gray-700 mb-2">
+                    Dam ID *
+                  </label>
+                  <input
+                    type="text"
+                    id="dam_id"
+                    name="dam_id"
+                    required
+                    value={breedingRecordFormData.dam_id}
+                    onChange={handleBreedingRecordInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="e.g., DOE001"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="animal_type" className="block text-sm font-medium text-gray-700 mb-2">
+                    Animal Type *
+                  </label>
+                  <select
+                    id="animal_type"
+                    name="animal_type"
+                    required
+                    value={breedingRecordFormData.animal_type}
+                    onChange={handleBreedingRecordInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  >
+                    <option value="rabbit">Rabbit</option>
+                    <option value="guinea-pig">Guinea Pig</option>
+                    <option value="dog">Dog</option>
+                    <option value="cat">Cat</option>
+                    <option value="fowl">Fowl</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">
+                    Status *
+                  </label>
+                  <select
+                    id="status"
+                    name="status"
+                    required
+                    value={breedingRecordFormData.status}
+                    onChange={handleBreedingRecordInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  >
+                    <option value="planned">Planned</option>
+                    <option value="bred">Bred</option>
+                    <option value="born">Born</option>
+                    <option value="weaned">Weaned</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="breeding_date" className="block text-sm font-medium text-gray-700 mb-2">
+                    Breeding Date *
+                  </label>
+                  <input
+                    type="date"
+                    id="breeding_date"
+                    name="breeding_date"
+                    required
+                    value={breedingRecordFormData.breeding_date}
+                    onChange={handleBreedingRecordInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="expected_birth" className="block text-sm font-medium text-gray-700 mb-2">
+                    Expected Birth Date
+                  </label>
+                  <input
+                    type="date"
+                    id="expected_birth"
+                    name="expected_birth"
+                    value={breedingRecordFormData.expected_birth}
+                    onChange={handleBreedingRecordInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Leave blank to auto-calculate based on animal type</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="actual_birth" className="block text-sm font-medium text-gray-700 mb-2">
+                    Actual Birth Date
+                  </label>
+                  <input
+                    type="date"
+                    id="actual_birth"
+                    name="actual_birth"
+                    value={breedingRecordFormData.actual_birth}
+                    onChange={handleBreedingRecordInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="litter_size" className="block text-sm font-medium text-gray-700 mb-2">
+                    Litter Size
+                  </label>
+                  <input
+                    type="number"
+                    id="litter_size"
+                    name="litter_size"
+                    min="0"
+                    value={breedingRecordFormData.litter_size}
+                    onChange={handleBreedingRecordInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="Number of offspring"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
+                  Notes
+                </label>
+                <textarea
+                  id="notes"
+                  name="notes"
+                  rows={4}
+                  value={breedingRecordFormData.notes}
+                  onChange={handleBreedingRecordInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  placeholder="Additional notes about this breeding record..."
+                />
+              </div>
+
+              <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowAddBreedingRecordModal(false)}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <LoadingSpinner size="sm" className="mr-2" />
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Record
                     </>
                   )}
                 </button>
