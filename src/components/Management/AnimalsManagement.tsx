@@ -1,36 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Heart, Calendar, Weight, User } from 'lucide-react';
 import { useAnimals } from '../../hooks/useAnimals';
+import { useBreeds } from '../../hooks/useBreeds';
 import { supabase } from '../../lib/supabase';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import ErrorMessage from '../ui/ErrorMessage';
 
 interface AnimalFormData {
   name: string;
-  type: 'rabbit' | 'guinea-pig' | 'dog' | 'cat' | 'fowl';
-  breed: string;
-  age: number;
-  weight: number;
+  breed_id: string;
+  date_of_birth: string;
+  weight_lbs: number;
   gender: 'male' | 'female';
   color: string;
-  status: 'available' | 'breeding' | 'sold' | 'reserved';
+  status: 'available' | 'breeding' | 'sold' | 'reserved' | 'retired' | 'deceased';
   price: number;
   description: string;
   image_url: string;
   coat_type: string;
+  coat_length: string;
   size: 'small' | 'medium' | 'large' | 'extra-large';
   temperament: string[];
-  vaccinations: string[];
-  egg_production: string;
-  purpose: 'eggs' | 'meat' | 'dual-purpose' | 'ornamental';
+  is_breeding_quality: boolean;
+  breeding_restrictions: string;
+  egg_production_annual: number;
+  purpose: 'eggs' | 'meat' | 'dual-purpose' | 'ornamental' | 'breeding';
+  acquisition_source: string;
+  acquisition_cost: number;
+  registration_number: string;
+  microchip_number: string;
+  markings: string;
+  notes: string;
+  facility_id: string;
+  sire_id: string;
+  dam_id: string;
 }
 
 const initialFormData: AnimalFormData = {
   name: '',
-  type: 'rabbit',
-  breed: '',
-  age: 0,
-  weight: 0,
+  breed_id: '',
+  date_of_birth: '',
+  weight_lbs: 0,
   gender: 'male',
   color: '',
   status: 'available',
@@ -38,29 +48,79 @@ const initialFormData: AnimalFormData = {
   description: '',
   image_url: '',
   coat_type: '',
+  coat_length: '',
   size: 'medium',
   temperament: [],
-  vaccinations: [],
-  egg_production: '',
-  purpose: 'dual-purpose'
+  is_breeding_quality: false,
+  breeding_restrictions: '',
+  egg_production_annual: 0,
+  purpose: 'dual-purpose',
+  acquisition_source: '',
+  acquisition_cost: 0,
+  registration_number: '',
+  microchip_number: '',
+  markings: '',
+  notes: '',
+  facility_id: '',
+  sire_id: '',
+  dam_id: ''
 };
 
 export default function AnimalsManagement() {
   const { animals, loading, error, refetch } = useAnimals();
+  const { breeds, loading: breedsLoading } = useBreeds();
+  const [facilities, setFacilities] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingAnimal, setEditingAnimal] = useState<string | null>(null);
   const [formData, setFormData] = useState<AnimalFormData>(initialFormData);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [temperamentInput, setTemperamentInput] = useState('');
-  const [vaccinationInput, setVaccinationInput] = useState('');
+
+  // Load facilities for the dropdown
+  useEffect(() => {
+    const fetchFacilities = async () => {
+      const { data } = await supabase
+        .from('facilities')
+        .select('id, name, facility_type')
+        .eq('is_active', true)
+        .order('name');
+      setFacilities(data || []);
+    };
+    fetchFacilities();
+  }, []);
+
+  // Get current breed to determine animal type
+  const selectedBreed = breeds.find(b => b.id === formData.breed_id);
+  const animalType = selectedBreed?.type;
+
+  // Get potential parent animals of the same type and breeding status
+  const potentialParents = animals.filter(animal => 
+    animal.breeds?.type === animalType && 
+    animal.is_breeding_quality &&
+    animal.id !== editingAnimal
+  );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: ['age', 'weight', 'price'].includes(name) ? parseFloat(value) || 0 : value
-    }));
+    const { name, value, type } = e.target;
+    
+    if (type === 'checkbox') {
+      const checked = (e.target as HTMLInputElement).checked;
+      setFormData(prev => ({
+        ...prev,
+        [name]: checked
+      }));
+    } else if (['weight_lbs', 'price', 'acquisition_cost', 'egg_production_annual'].includes(name)) {
+      setFormData(prev => ({
+        ...prev,
+        [name]: parseFloat(value) || 0
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const addTemperament = () => {
@@ -80,36 +140,44 @@ export default function AnimalsManagement() {
     }));
   };
 
-  const addVaccination = () => {
-    if (vaccinationInput.trim() && !formData.vaccinations.includes(vaccinationInput.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        vaccinations: [...prev.vaccinations, vaccinationInput.trim()]
-      }));
-      setVaccinationInput('');
-    }
-  };
-
-  const removeVaccination = (vaccination: string) => {
-    setFormData(prev => ({
-      ...prev,
-      vaccinations: prev.vaccinations.filter(v => v !== vaccination)
-    }));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     setMessage(null);
 
     try {
-      const submitData = {
-        ...formData,
-        coat_type: formData.coat_type || null,
-        egg_production: formData.egg_production || null,
-        purpose: formData.type === 'fowl' ? formData.purpose : null,
-        size: ['dog', 'cat'].includes(formData.type) ? formData.size : null
+      // Prepare data for submission - only include fields that have values
+      const submitData: any = {
+        name: formData.name,
+        breed_id: formData.breed_id,
+        weight_lbs: formData.weight_lbs,
+        gender: formData.gender,
+        color: formData.color,
+        status: formData.status,
+        description: formData.description,
+        image_url: formData.image_url,
+        is_breeding_quality: formData.is_breeding_quality
       };
+
+      // Add optional fields only if they have values
+      if (formData.date_of_birth) submitData.date_of_birth = formData.date_of_birth;
+      if (formData.price > 0) submitData.price = formData.price;
+      if (formData.coat_type) submitData.coat_type = formData.coat_type;
+      if (formData.coat_length) submitData.coat_length = formData.coat_length;
+      if (formData.size && ['dog', 'cat'].includes(animalType || '')) submitData.size = formData.size;
+      if (formData.temperament.length > 0) submitData.temperament = formData.temperament;
+      if (formData.breeding_restrictions) submitData.breeding_restrictions = formData.breeding_restrictions;
+      if (formData.egg_production_annual > 0) submitData.egg_production_annual = formData.egg_production_annual;
+      if (formData.purpose && animalType === 'fowl') submitData.purpose = formData.purpose;
+      if (formData.acquisition_source) submitData.acquisition_source = formData.acquisition_source;
+      if (formData.acquisition_cost > 0) submitData.acquisition_cost = formData.acquisition_cost;
+      if (formData.registration_number) submitData.registration_number = formData.registration_number;
+      if (formData.microchip_number) submitData.microchip_number = formData.microchip_number;
+      if (formData.markings) submitData.markings = formData.markings;
+      if (formData.notes) submitData.notes = formData.notes;
+      if (formData.facility_id) submitData.facility_id = formData.facility_id;
+      if (formData.sire_id) submitData.sire_id = formData.sire_id;
+      if (formData.dam_id) submitData.dam_id = formData.dam_id;
 
       if (editingAnimal) {
         const { error } = await supabase
@@ -133,6 +201,7 @@ export default function AnimalsManagement() {
       setEditingAnimal(null);
       refetch();
     } catch (err) {
+      console.error('Error saving animal:', err);
       setMessage({ 
         type: 'error', 
         text: err instanceof Error ? err.message : 'Failed to save animal' 
@@ -144,23 +213,33 @@ export default function AnimalsManagement() {
 
   const handleEdit = (animal: any) => {
     setFormData({
-      name: animal.name,
-      type: animal.type,
-      breed: animal.breed,
-      age: animal.age,
-      weight: animal.weight,
-      gender: animal.gender,
-      color: animal.color,
-      status: animal.status,
+      name: animal.name || '',
+      breed_id: animal.breed_id || '',
+      date_of_birth: animal.date_of_birth || '',
+      weight_lbs: animal.weight_lbs || 0,
+      gender: animal.gender || 'male',
+      color: animal.color || '',
+      status: animal.status || 'available',
       price: animal.price || 0,
-      description: animal.description,
-      image_url: animal.image_url,
+      description: animal.description || '',
+      image_url: animal.image_url || '',
       coat_type: animal.coat_type || '',
+      coat_length: animal.coat_length || '',
       size: animal.size || 'medium',
       temperament: animal.temperament || [],
-      vaccinations: animal.vaccinations || [],
-      egg_production: animal.egg_production || '',
-      purpose: animal.purpose || 'dual-purpose'
+      is_breeding_quality: animal.is_breeding_quality || false,
+      breeding_restrictions: animal.breeding_restrictions || '',
+      egg_production_annual: animal.egg_production_annual || 0,
+      purpose: animal.purpose || 'dual-purpose',
+      acquisition_source: animal.acquisition_source || '',
+      acquisition_cost: animal.acquisition_cost || 0,
+      registration_number: animal.registration_number || '',
+      microchip_number: animal.microchip_number || '',
+      markings: animal.markings || '',
+      notes: animal.notes || '',
+      facility_id: animal.facility_id || '',
+      sire_id: animal.sire_id || '',
+      dam_id: animal.dam_id || ''
     });
     setEditingAnimal(animal.id);
     setShowForm(true);
@@ -172,7 +251,7 @@ export default function AnimalsManagement() {
     try {
       const { error } = await supabase
         .from('animals')
-        .delete()
+        .update({ is_active: false })
         .eq('id', id);
 
       if (error) throw error;
@@ -191,7 +270,6 @@ export default function AnimalsManagement() {
     setShowForm(false);
     setEditingAnimal(null);
     setTemperamentInput('');
-    setVaccinationInput('');
   };
 
   const getStatusColor = (status: string) => {
@@ -200,6 +278,8 @@ export default function AnimalsManagement() {
       case 'breeding': return 'bg-blue-100 text-blue-800';
       case 'sold': return 'bg-gray-100 text-gray-800';
       case 'reserved': return 'bg-yellow-100 text-yellow-800';
+      case 'retired': return 'bg-purple-100 text-purple-800';
+      case 'deceased': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -212,7 +292,7 @@ export default function AnimalsManagement() {
     }
   };
 
-  if (loading) {
+  if (loading || breedsLoading) {
     return (
       <div className="flex justify-center py-12">
         <LoadingSpinner size="lg" />
@@ -284,48 +364,32 @@ export default function AnimalsManagement() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Animal Type *
+                  Breed *
                 </label>
                 <select
-                  name="type"
+                  name="breed_id"
                   required
-                  value={formData.type}
+                  value={formData.breed_id}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 >
-                  <option value="rabbit">Rabbit</option>
-                  <option value="guinea-pig">Guinea Pig</option>
-                  <option value="dog">Dog</option>
-                  <option value="cat">Cat</option>
-                  <option value="fowl">Fowl</option>
+                  <option value="">Select Breed</option>
+                  {breeds.map((breed) => (
+                    <option key={breed.id} value={breed.id}>
+                      {breed.name} ({getAnimalTypeLabel(breed.type)})
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Breed *
+                  Date of Birth
                 </label>
                 <input
-                  type="text"
-                  name="breed"
-                  required
-                  value={formData.breed}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  placeholder="e.g., Holland Lop"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Age (months) *
-                </label>
-                <input
-                  type="number"
-                  name="age"
-                  required
-                  min="0"
-                  value={formData.age}
+                  type="date"
+                  name="date_of_birth"
+                  value={formData.date_of_birth}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 />
@@ -337,11 +401,11 @@ export default function AnimalsManagement() {
                 </label>
                 <input
                   type="number"
-                  name="weight"
+                  name="weight_lbs"
                   required
                   min="0"
                   step="0.1"
-                  value={formData.weight}
+                  value={formData.weight_lbs}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 />
@@ -393,6 +457,8 @@ export default function AnimalsManagement() {
                   <option value="breeding">Breeding</option>
                   <option value="sold">Sold</option>
                   <option value="reserved">Reserved</option>
+                  <option value="retired">Retired</option>
+                  <option value="deceased">Deceased</option>
                 </select>
               </div>
 
@@ -413,6 +479,25 @@ export default function AnimalsManagement() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Facility
+                </label>
+                <select
+                  name="facility_id"
+                  value={formData.facility_id}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                >
+                  <option value="">Select Facility</option>
+                  {facilities.map((facility) => (
+                    <option key={facility.id} value={facility.id}>
+                      {facility.name} ({facility.facility_type})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Image URL *
                 </label>
                 <input
@@ -426,8 +511,35 @@ export default function AnimalsManagement() {
                 />
               </div>
 
+              {/* Registration fields */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Registration Number
+                </label>
+                <input
+                  type="text"
+                  name="registration_number"
+                  value={formData.registration_number}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Microchip Number
+                </label>
+                <input
+                  type="text"
+                  name="microchip_number"
+                  value={formData.microchip_number}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
+              </div>
+
               {/* Conditional fields based on animal type */}
-              {(['guinea-pig', 'cat'].includes(formData.type)) && (
+              {(['guinea-pig', 'cat'].includes(animalType || '')) && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Coat Type
@@ -443,7 +555,26 @@ export default function AnimalsManagement() {
                 </div>
               )}
 
-              {(['dog', 'cat'].includes(formData.type)) && (
+              {animalType === 'cat' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Coat Length
+                  </label>
+                  <select
+                    name="coat_length"
+                    value={formData.coat_length}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  >
+                    <option value="">Select Length</option>
+                    <option value="short">Short</option>
+                    <option value="medium">Medium</option>
+                    <option value="long">Long</option>
+                  </select>
+                </div>
+              )}
+
+              {(['dog', 'cat'].includes(animalType || '')) && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Size
@@ -462,19 +593,20 @@ export default function AnimalsManagement() {
                 </div>
               )}
 
-              {formData.type === 'fowl' && (
+              {animalType === 'fowl' && (
                 <>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Egg Production
+                      Egg Production (per year)
                     </label>
                     <input
-                      type="text"
-                      name="egg_production"
-                      value={formData.egg_production}
+                      type="number"
+                      name="egg_production_annual"
+                      min="0"
+                      value={formData.egg_production_annual}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                      placeholder="e.g., 250 eggs/year"
+                      placeholder="e.g., 250"
                     />
                   </div>
                   <div>
@@ -491,6 +623,54 @@ export default function AnimalsManagement() {
                       <option value="meat">Meat</option>
                       <option value="dual-purpose">Dual Purpose</option>
                       <option value="ornamental">Ornamental</option>
+                      <option value="breeding">Breeding</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {/* Parent selection for breeding animals */}
+              {formData.is_breeding_quality && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Sire (Father)
+                    </label>
+                    <select
+                      name="sire_id"
+                      value={formData.sire_id}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    >
+                      <option value="">Select Sire</option>
+                      {potentialParents
+                        .filter(animal => animal.gender === 'male')
+                        .map((animal) => (
+                          <option key={animal.id} value={animal.id}>
+                            {animal.name} - {animal.breed}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Dam (Mother)
+                    </label>
+                    <select
+                      name="dam_id"
+                      value={formData.dam_id}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    >
+                      <option value="">Select Dam</option>
+                      {potentialParents
+                        .filter(animal => animal.gender === 'female')
+                        .map((animal) => (
+                          <option key={animal.id} value={animal.id}>
+                            {animal.name} - {animal.breed}
+                          </option>
+                        ))}
                     </select>
                   </div>
                 </>
@@ -512,8 +692,22 @@ export default function AnimalsManagement() {
               />
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Markings
+              </label>
+              <textarea
+                name="markings"
+                rows={2}
+                value={formData.markings}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                placeholder="Describe any distinctive markings..."
+              />
+            </div>
+
             {/* Temperament */}
-            {(['dog', 'cat'].includes(formData.type)) && (
+            {(['dog', 'cat'].includes(animalType || '')) && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Temperament
@@ -555,48 +749,83 @@ export default function AnimalsManagement() {
               </div>
             )}
 
-            {/* Vaccinations */}
-            {(['dog', 'cat'].includes(formData.type)) && (
+            {/* Breeding Quality and Restrictions */}
+            <div className="space-y-4">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="is_breeding_quality"
+                  checked={formData.is_breeding_quality}
+                  onChange={handleInputChange}
+                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                />
+                <label className="ml-2 block text-sm text-gray-900">
+                  Breeding Quality Animal
+                </label>
+              </div>
+
+              {formData.is_breeding_quality && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Breeding Restrictions
+                  </label>
+                  <textarea
+                    name="breeding_restrictions"
+                    rows={2}
+                    value={formData.breeding_restrictions}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="Any breeding restrictions or requirements..."
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Acquisition Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Vaccinations
+                  Acquisition Source
                 </label>
-                <div className="flex space-x-2 mb-2">
-                  <input
-                    type="text"
-                    value={vaccinationInput}
-                    onChange={(e) => setVaccinationInput(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                    placeholder="Add a vaccination..."
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addVaccination())}
-                  />
-                  <button
-                    type="button"
-                    onClick={addVaccination}
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
-                  >
-                    Add
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {formData.vaccinations.map((vaccination, index) => (
-                    <span
-                      key={index}
-                      className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm flex items-center"
-                    >
-                      {vaccination}
-                      <button
-                        type="button"
-                        onClick={() => removeVaccination(vaccination)}
-                        className="ml-2 text-green-600 hover:text-green-800"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
+                <input
+                  type="text"
+                  name="acquisition_source"
+                  value={formData.acquisition_source}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  placeholder="Where the animal was acquired from"
+                />
               </div>
-            )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Acquisition Cost ($)
+                </label>
+                <input
+                  type="number"
+                  name="acquisition_cost"
+                  min="0"
+                  step="0.01"
+                  value={formData.acquisition_cost}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Notes
+              </label>
+              <textarea
+                name="notes"
+                rows={3}
+                value={formData.notes}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                placeholder="Additional notes about this animal..."
+              />
+            </div>
 
             <div className="flex space-x-4">
               <button
@@ -671,17 +900,17 @@ export default function AnimalsManagement() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{getAnimalTypeLabel(animal.type)}</div>
+                      <div className="text-sm text-gray-900">{getAnimalTypeLabel(animal.type || 'rabbit')}</div>
                       <div className="text-sm text-gray-500">{animal.breed}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center text-sm text-gray-900">
                         <Calendar className="h-4 w-4 mr-1 text-gray-400" />
-                        {animal.age} months
+                        {animal.age_months || 0} months
                       </div>
                       <div className="flex items-center text-sm text-gray-500">
                         <Weight className="h-4 w-4 mr-1 text-gray-400" />
-                        {animal.weight} lbs
+                        {animal.weight_lbs} lbs
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -690,7 +919,7 @@ export default function AnimalsManagement() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {animal.price ? `$${animal.price}` : 'N/A'}
+                      {animal.price ? `${animal.price}` : 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">
