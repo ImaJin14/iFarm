@@ -7,6 +7,8 @@ import { useBiProducts } from '../hooks/useBiProducts';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ErrorMessage from '../components/ui/ErrorMessage';
 import BiProductsManagement from '../components/Management/BiProductsManagement';
+import InventoryManagement from '../components/Management/InventoryManagement';
+import BreedingManagement from '../components/Management/BreedingManagement';
 
 export default function Management() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -286,19 +288,9 @@ export default function Management() {
       case 'animals':
         return renderAnimals();
       case 'breeding':
-        return (
-          <div className="text-center py-12">
-            <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">Breeding management coming soon...</p>
-          </div>
-        );
+        return <BreedingManagement />;
       case 'inventory':
-        return (
-          <div className="text-center py-12">
-            <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">Inventory management coming soon...</p>
-          </div>
-        );
+        return <InventoryManagement />;
       case 'biproducts':
         return <BiProductsManagement />;
       case 'settings':
