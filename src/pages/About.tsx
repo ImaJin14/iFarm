@@ -1,20 +1,48 @@
 import React from 'react';
-import { Award, Leaf, Heart, Users, MapPin, Calendar } from 'lucide-react';
+import { Award, Leaf, Heart, Users, MapPin, Calendar, Star } from 'lucide-react';
 import { useTeam } from '../hooks/useTeam';
+import { useAboutContent } from '../hooks/useAboutContent';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ErrorMessage from '../components/ui/ErrorMessage';
 
 export default function About() {
   const { teamMembers, loading, error, refetch } = useTeam();
+  const { aboutContent, loading: aboutLoading, error: aboutError } = useAboutContent();
   
-  const galleryImages = [
-    'https://images.pexels.com/photos/4588000/pexels-photo-4588000.jpeg?auto=compress&cs=tinysrgb&w=600',
-    'https://images.pexels.com/photos/4588012/pexels-photo-4588012.jpeg?auto=compress&cs=tinysrgb&w=600',
-    'https://images.pexels.com/photos/4588030/pexels-photo-4588030.jpeg?auto=compress&cs=tinysrgb&w=600',
-    'https://images.pexels.com/photos/4601880/pexels-photo-4601880.jpeg?auto=compress&cs=tinysrgb&w=600',
-    'https://images.pexels.com/photos/4588065/pexels-photo-4588065.jpeg?auto=compress&cs=tinysrgb&w=600',
-    'https://images.pexels.com/photos/4587998/pexels-photo-4587998.jpeg?auto=compress&cs=tinysrgb&w=600'
-  ];
+  const getIconComponent = (iconName: string) => {
+    const icons: { [key: string]: any } = {
+      Heart, Leaf, Award, Users, Calendar, MapPin, Star
+    };
+    return icons[iconName] || Heart;
+  };
+
+  const getColorClasses = (color: string) => {
+    const colors: { [key: string]: string } = {
+      yellow: 'bg-yellow-100 text-yellow-600',
+      blue: 'bg-blue-100 text-blue-600',
+      green: 'bg-green-100 text-green-600',
+      purple: 'bg-purple-100 text-purple-600',
+      red: 'bg-red-100 text-red-600',
+      indigo: 'bg-indigo-100 text-indigo-600'
+    };
+    return colors[color] || 'bg-gray-100 text-gray-600';
+  };
+
+  if (aboutLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (aboutError || !aboutContent) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <ErrorMessage message={aboutError || 'Failed to load about content'} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -26,8 +54,7 @@ export default function About() {
               About iFarm
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Founded in 2015, we've been dedicated to sustainable livestock farming practices, 
-              ethical breeding, and providing exceptional animals to our community across multiple species.
+              {aboutContent.hero_intro_text}
             </p>
           </div>
         </div>
@@ -40,47 +67,23 @@ export default function About() {
             <div>
               <h2 className="text-3xl font-bold text-gray-900 mb-6">Our Mission</h2>
               <p className="text-lg text-gray-600 mb-6">
-                To provide healthy, well-bred animals across multiple species while maintaining the highest standards 
-                of animal welfare and environmental responsibility. We believe in sustainable 
-                farming practices that benefit both our animals and the community.
+                {aboutContent.mission_statement}
               </p>
               <div className="grid grid-cols-2 gap-6">
-                <div className="flex items-start space-x-3">
-                  <div className="bg-green-100 p-2 rounded-lg">
-                    <Heart className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Animal Welfare</h3>
-                    <p className="text-sm text-gray-600">Ethical care and treatment</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="bg-green-100 p-2 rounded-lg">
-                    <Leaf className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Sustainability</h3>
-                    <p className="text-sm text-gray-600">Eco-friendly practices</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="bg-green-100 p-2 rounded-lg">
-                    <Award className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Excellence</h3>
-                    <p className="text-sm text-gray-600">Quality breeding standards</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="bg-green-100 p-2 rounded-lg">
-                    <Users className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Community</h3>
-                    <p className="text-sm text-gray-600">Education and support</p>
-                  </div>
-                </div>
+                {(aboutContent.values_list as any[])?.map((value, index) => {
+                  const IconComponent = getIconComponent(value.icon);
+                  return (
+                    <div key={index} className="flex items-start space-x-3">
+                      <div className="bg-green-100 p-2 rounded-lg">
+                        <IconComponent className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900">{value.title}</h3>
+                        <p className="text-sm text-gray-600">{value.description}</p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
             <div className="relative">
@@ -100,38 +103,25 @@ export default function About() {
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Our Journey</h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              From a small backyard hobby to a certified sustainable multi-species farm
+              {aboutContent.history_intro_text}
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="bg-white p-6 rounded-xl shadow-lg">
-                <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Calendar className="h-8 w-8 text-green-600" />
+            {(aboutContent.history_milestones as any[])?.map((milestone, index) => {
+              const IconComponent = getIconComponent(milestone.icon);
+              return (
+                <div key={index} className="text-center">
+                  <div className="bg-white p-6 rounded-xl shadow-lg">
+                    <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <IconComponent className="h-8 w-8 text-green-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">{milestone.year}</h3>
+                    <p className="text-gray-600">{milestone.title}</p>
+                  </div>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">2015</h3>
-                <p className="text-gray-600">Started with rabbits and guinea pigs in our backyard</p>
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="bg-white p-6 rounded-xl shadow-lg">
-                <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <MapPin className="h-8 w-8 text-green-600" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">2018</h3>
-                <p className="text-gray-600">Moved to our current 10-acre facility and expanded to dogs and cats</p>
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="bg-white p-6 rounded-xl shadow-lg">
-                <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Award className="h-8 w-8 text-green-600" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">2024</h3>
-                <p className="text-gray-600">Added fowls and achieved sustainable farming certification</p>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -189,47 +179,22 @@ export default function About() {
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Certifications & Awards</h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Recognition for our commitment to excellence and sustainable practices
+              {aboutContent.certifications_intro_text}
             </p>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="bg-white p-6 rounded-xl shadow-lg">
-                <div className="bg-yellow-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Award className="h-8 w-8 text-yellow-600" />
+            {(aboutContent.certifications_awards as any[])?.map((cert, index) => (
+              <div key={index} className="text-center">
+                <div className="bg-white p-6 rounded-xl shadow-lg">
+                  <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${getColorClasses(cert.color)}`}>
+                    <Award className="h-8 w-8" />
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-1">{cert.title}</h3>
+                  <p className="text-sm text-gray-600">{cert.description}</p>
                 </div>
-                <h3 className="font-semibold text-gray-900 mb-1">Sustainable Farm</h3>
-                <p className="text-sm text-gray-600">Certification 2024</p>
               </div>
-            </div>
-            <div className="text-center">
-              <div className="bg-white p-6 rounded-xl shadow-lg">
-                <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Award className="h-8 w-8 text-blue-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-1">ARBA Member</h3>
-                <p className="text-sm text-gray-600">Since 2016</p>
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="bg-white p-6 rounded-xl shadow-lg">
-                <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Award className="h-8 w-8 text-green-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-1">Best Breeder</h3>
-                <p className="text-sm text-gray-600">State Fair 2023</p>
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="bg-white p-6 rounded-xl shadow-lg">
-                <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Award className="h-8 w-8 text-purple-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-1">Humane Care</h3>
-                <p className="text-sm text-gray-600">Certified 2022</p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
@@ -240,12 +205,12 @@ export default function About() {
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Farm Gallery</h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Take a visual tour of our facilities and meet some of our animals
+              {aboutContent.gallery_intro_text}
             </p>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {galleryImages.map((image, index) => (
+            {aboutContent.gallery_images?.map((image, index) => (
               <div key={index} className="aspect-square overflow-hidden rounded-lg">
                 <img
                   src={image}

@@ -382,6 +382,50 @@ export interface Database {
           updated_at?: string
         }
       }
+      about_content: {
+        Row: {
+          id: string
+          hero_intro_text: string
+          mission_statement: string
+          values_list: any
+          history_intro_text: string
+          history_milestones: any
+          certifications_intro_text: string
+          certifications_awards: any
+          gallery_intro_text: string
+          gallery_images: string[]
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          hero_intro_text: string
+          mission_statement: string
+          values_list?: any
+          history_intro_text: string
+          history_milestones?: any
+          certifications_intro_text: string
+          certifications_awards?: any
+          gallery_intro_text: string
+          gallery_images?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          hero_intro_text?: string
+          mission_statement?: string
+          values_list?: any
+          history_intro_text?: string
+          history_milestones?: any
+          certifications_intro_text?: string
+          certifications_awards?: any
+          gallery_intro_text?: string
+          gallery_images?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
   }
 }
