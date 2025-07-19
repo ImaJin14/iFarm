@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import type { Database } from '../lib/supabase';
-
-type Breed = Database['public']['Tables']['breeds']['Row'];
+import type { Database, Breed } from '../lib/supabase';
 
 export interface UseBreeds {
   breeds: Breed[];
@@ -24,6 +22,7 @@ export function useBreeds(): UseBreeds {
       const { data, error: supabaseError } = await supabase
         .from('breeds')
         .select('*')
+        .eq('is_active', true)
         .order('name');
 
       if (supabaseError) {
@@ -66,6 +65,7 @@ export function useBreed(id: string) {
           .from('breeds')
           .select('*')
           .eq('id', id)
+          .eq('is_active', true)
           .single();
 
         if (supabaseError) {
