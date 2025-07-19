@@ -56,13 +56,13 @@ export default function HomeManagement() {
       setHeroDescription(homeContent.hero_description);
       setHeroImageUrl(homeContent.hero_image_url);
       setHeroBadgeText(homeContent.hero_badge_text);
-      setHeroFeatures(homeContent.hero_features as HeroFeature[] || []);
+      setHeroFeatures(homeContent.hero_features || []);
       setFeaturedSectionTitle(homeContent.featured_section_title);
       setFeaturedSectionDescription(homeContent.featured_section_description);
       setNewsSectionTitle(homeContent.news_section_title);
       setNewsSectionDescription(homeContent.news_section_description);
-      setCtaButtons(homeContent.cta_buttons as CTAButton[] || []);
-      setStats(homeContent.stats as Stat[] || []);
+      setCtaButtons(homeContent.cta_buttons || []);
+      setStats(homeContent.stats || []);
     }
   }, [homeContent]);
 
@@ -86,15 +86,26 @@ export default function HomeManagement() {
         stats: stats
       };
 
-      const { error } = await supabase
-        .from('home_content')
-        .update(updateData)
-        .eq('id', homeContent?.id);
+      // Find the existing 'home' page content entry
+      const { data: existingContent, error: fetchError } = await supabase
+        .from('page_content')
+        .select('id')
+        .eq('page_type', 'home')
+        .single();
 
-      if (error) throw error;
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      const { error: updateError } = await supabase
+        .from('page_content')
+        .update({ content_data: updateData })
+        .eq('id', existingContent.id);
+
+      if (updateError) throw updateError;
 
       setMessage({ type: 'success', text: 'Home page content updated successfully!' });
-      refetch();
+      refetch(); // Re-fetch to ensure local state is in sync
     } catch (err) {
       setMessage({ 
         type: 'error', 
