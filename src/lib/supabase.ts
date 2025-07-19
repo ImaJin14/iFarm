@@ -532,6 +532,62 @@ export interface Database {
         created_at?: string
         updated_at?: string
       }
+      farm_settings: {
+        Row: {
+          id: string
+          farm_name: string
+          farm_tagline: string
+          contact_email: string
+          contact_phone: string
+          address: string
+          website_url: string | null
+          timezone: string
+          currency: string
+          default_weight_unit: string
+          low_stock_threshold: number
+          enable_notifications: boolean
+          notification_email: string | null
+          backup_frequency: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          farm_name: string
+          farm_tagline: string
+          contact_email: string
+          contact_phone: string
+          address: string
+          website_url?: string | null
+          timezone: string
+          currency: string
+          default_weight_unit: string
+          low_stock_threshold: number
+          enable_notifications: boolean
+          notification_email?: string | null
+          backup_frequency: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          farm_name?: string
+          farm_tagline?: string
+          contact_email?: string
+          contact_phone?: string
+          address?: string
+          website_url?: string | null
+          timezone?: string
+          currency?: string
+          default_weight_unit?: string
+          low_stock_threshold?: number
+          enable_notifications?: boolean
+          notification_email?: string | null
+          backup_frequency?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
   }
 }

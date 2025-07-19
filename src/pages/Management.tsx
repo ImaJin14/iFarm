@@ -15,6 +15,7 @@ import AboutManagement from '../components/Management/AboutManagement';
 import ContactManagement from '../components/Management/ContactManagement';
 import HomeManagement from '../components/Management/HomeManagement';
 import NewsManagement from '../components/Management/NewsManagement';
+import SettingsManagement from '../components/Management/SettingsManagement';
 
 export default function Management() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -219,12 +220,7 @@ export default function Management() {
       case 'news':
         return <NewsManagement />;
       case 'settings':
-        return (
-          <div className="text-center py-12">
-            <Settings className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">Settings panel coming soon...</p>
-          </div>
-        );
+        return <SettingsManagement />;
       default:
         return renderOverview();
     }
