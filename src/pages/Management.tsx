@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BarChart3, Calendar, Heart, Package, DollarSign, Settings, AlertTriangle, TrendingUp, Plus, X, Edit } from 'lucide-react';
+import { BarChart3, Calendar, Heart, Package, DollarSign, Settings, AlertTriangle, TrendingUp, Plus, X, Edit, PawPrint } from 'lucide-react';
 import { useAnimals } from '../hooks/useAnimals';
 import { useBreedingRecords } from '../hooks/useBreedingRecords';
 import { useInventory } from '../hooks/useInventory';
@@ -10,15 +10,19 @@ export default function Management() {
   const { animals, loading: animalsLoading } = useAnimals();
   const { breedingRecords, loading: breedingLoading, refetch } = useBreedingRecords();
   const { inventory, loading: inventoryLoading, refetch: refetchInventory } = useInventory();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('animals');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [showAddBreedingRecordModal, setShowAddBreedingRecordModal] = useState(false);
   const [showEditItemModal, setShowEditItemModal] = useState(false);
   const [showEditBreedingRecordModal, setShowEditBreedingRecordModal] = useState(false);
+  const [showAddAnimalModal, setShowAddAnimalModal] = useState(false);
+  const [showEditAnimalModal, setShowEditAnimalModal] = useState(false);
+  const [showDeleteAnimalModal, setShowDeleteAnimalModal] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [editingBreedingRecord, setEditingBreedingRecord] = useState<any>(null);
+  const [currentAnimal, setCurrentAnimal] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -41,6 +45,26 @@ export default function Management() {
     litter_size: '',
     status: 'planned' as 'planned' | 'bred' | 'born' | 'weaned',
     notes: ''
+  });
+
+  const [animalFormData, setAnimalFormData] = useState({
+    name: '',
+    type: 'rabbit' as 'rabbit' | 'guinea-pig' | 'dog' | 'cat' | 'fowl',
+    breed: '',
+    age: 0,
+    weight: 0,
+    gender: 'male' as 'male' | 'female',
+    color: '',
+    status: 'available' as 'available' | 'breeding' | 'sold' | 'reserved',
+    price: 0,
+    description: '',
+    image_url: '',
+    coat_type: '',
+    size: 'medium' as 'small' | 'medium' | 'large' | 'extra-large',
+    temperament: '',
+    vaccinations: '',
+    egg_production: '',
+    purpose: 'eggs' as 'eggs' | 'meat' | 'dual-purpose' | 'ornamental'
   });
 
   const openEditItemModal = (item: any) => {
@@ -73,6 +97,28 @@ export default function Management() {
       notes: record.notes || ''
     });
     setShowEditBreedingRecordModal(true);
+  };
+
+  const resetAnimalForm = () => {
+    setAnimalFormData({
+      name: '',
+      type: 'rabbit',
+      breed: '',
+      age: 0,
+      weight: 0,
+      gender: 'male',
+      color: '',
+      status: 'available',
+      price: 0,
+      description: '',
+      image_url: '',
+      coat_type: '',
+      size: 'medium',
+      temperament: '',
+      vaccinations: '',
+      egg_production: '',
+      purpose: 'eggs'
+    });
   };
 
   const handleLogin = (e: React.FormEvent) => {
@@ -341,6 +387,125 @@ export default function Management() {
     }
   };
 
+  const handleAddAnimal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const animalData = {
+        ...animalFormData,
+        temperament: animalFormData.temperament ? animalFormData.temperament.split(',').map(t => t.trim()) : null,
+        vaccinations: animalFormData.vaccinations ? animalFormData.vaccinations.split(',').map(v => v.trim()) : null,
+        coat_type: animalFormData.coat_type || null,
+        size: animalFormData.size || null,
+        egg_production: animalFormData.egg_production || null,
+        purpose: animalFormData.purpose || null,
+        price: animalFormData.price || null
+      };
+
+      const { error } = await supabase
+        .from('animals')
+        .insert([animalData]);
+
+      if (error) throw error;
+
+      alert('Animal added successfully!');
+      setShowAddAnimalModal(false);
+      resetAnimalForm();
+    } catch (error) {
+      console.error('Error adding animal:', error);
+      alert(`Error adding animal: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditAnimalClick = (animal: any) => {
+    setCurrentAnimal(animal);
+    setAnimalFormData({
+      name: animal.name,
+      type: animal.type,
+      breed: animal.breed,
+      age: animal.age,
+      weight: animal.weight,
+      gender: animal.gender,
+      color: animal.color,
+      status: animal.status,
+      price: animal.price || 0,
+      description: animal.description,
+      image_url: animal.image_url,
+      coat_type: animal.coat_type || '',
+      size: animal.size || 'medium',
+      temperament: animal.temperament ? animal.temperament.join(', ') : '',
+      vaccinations: animal.vaccinations ? animal.vaccinations.join(', ') : '',
+      egg_production: animal.egg_production || '',
+      purpose: animal.purpose || 'eggs'
+    });
+    setShowEditAnimalModal(true);
+  };
+
+  const handleUpdateAnimal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const animalData = {
+        ...animalFormData,
+        temperament: animalFormData.temperament ? animalFormData.temperament.split(',').map(t => t.trim()) : null,
+        vaccinations: animalFormData.vaccinations ? animalFormData.vaccinations.split(',').map(v => v.trim()) : null,
+        coat_type: animalFormData.coat_type || null,
+        size: animalFormData.size || null,
+        egg_production: animalFormData.egg_production || null,
+        purpose: animalFormData.purpose || null,
+        price: animalFormData.price || null
+      };
+
+      const { error } = await supabase
+        .from('animals')
+        .update(animalData)
+        .eq('id', currentAnimal.id);
+
+      if (error) throw error;
+
+      alert('Animal updated successfully!');
+      setShowEditAnimalModal(false);
+      setCurrentAnimal(null);
+      resetAnimalForm();
+    } catch (error) {
+      console.error('Error updating animal:', error);
+      alert(`Error updating animal: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteAnimalClick = (animal: any) => {
+    setCurrentAnimal(animal);
+    setShowDeleteAnimalModal(true);
+  };
+
+  const handleConfirmDeleteAnimal = async () => {
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await supabase
+        .from('animals')
+        .delete()
+        .eq('id', currentAnimal.id);
+
+      if (error) throw error;
+
+      alert('Animal deleted successfully!');
+      setShowDeleteAnimalModal(false);
+      setCurrentAnimal(null);
+    } catch (error) {
+      console.error('Error deleting animal:', error);
+      alert(`Error deleting animal: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -378,6 +543,7 @@ export default function Management() {
 
   const tabs = [
     { id: 'overview', name: 'Overview', icon: BarChart3 },
+    { id: 'animals', name: 'Animals', icon: PawPrint },
     { id: 'inventory', name: 'Inventory', icon: Package },
     { id: 'breeding', name: 'Breeding', icon: Heart },
     { id: 'schedule', name: 'Schedule', icon: Calendar },
@@ -584,6 +750,91 @@ export default function Management() {
           </div>
         )}
 
+        {/* Animals Tab */}
+        {activeTab === 'animals' && (
+          <div>
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Animal Management</h2>
+                <button
+                  onClick={() => setShowAddAnimalModal(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Animal
+                </button>
+              </div>
+
+              {animalsLoading ? (
+                <div className="flex justify-center py-12">
+                  <LoadingSpinner size="lg" />
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Breed</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Age</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {animals.map((animal) => (
+                        <tr key={animal.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <img className="h-10 w-10 rounded-full object-cover" src={animal.image_url} alt={animal.name} />
+                              <div className="ml-4">
+                                <div className="text-sm font-medium text-gray-900">{animal.name}</div>
+                                <div className="text-sm text-gray-500">{animal.color}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 capitalize">{animal.type}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{animal.breed}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{animal.age} months</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              animal.status === 'available' ? 'bg-green-100 text-green-800' :
+                              animal.status === 'breeding' ? 'bg-blue-100 text-blue-800' :
+                              animal.status === 'sold' ? 'bg-gray-100 text-gray-800' :
+                              'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {animal.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {animal.price ? `$${animal.price}` : 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                            <button
+                              onClick={() => handleEditAnimalClick(animal)}
+                              className="text-blue-600 hover:text-blue-900"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteAnimalClick(animal)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Inventory Tab */}
         {activeTab === 'inventory' && (
           <div>
@@ -737,6 +988,499 @@ export default function Management() {
           </div>
         )}
       </div>
+
+      {/* Add Animal Modal */}
+      {showAddAnimalModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Add New Animal</h3>
+            <form onSubmit={handleAddAnimal} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={animalFormData.name}
+                    onChange={(e) => setAnimalFormData({...animalFormData, name: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Type *</label>
+                  <select
+                    required
+                    value={animalFormData.type}
+                    onChange={(e) => setAnimalFormData({...animalFormData, type: e.target.value as any})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  >
+                    <option value="rabbit">Rabbit</option>
+                    <option value="guinea-pig">Guinea Pig</option>
+                    <option value="dog">Dog</option>
+                    <option value="cat">Cat</option>
+                    <option value="fowl">Fowl</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Breed *</label>
+                  <input
+                    type="text"
+                    required
+                    value={animalFormData.breed}
+                    onChange={(e) => setAnimalFormData({...animalFormData, breed: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Age (months) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    value={animalFormData.age}
+                    onChange={(e) => setAnimalFormData({...animalFormData, age: parseInt(e.target.value)})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Weight (lbs) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    step="0.1"
+                    value={animalFormData.weight}
+                    onChange={(e) => setAnimalFormData({...animalFormData, weight: parseFloat(e.target.value)})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender *</label>
+                  <select
+                    required
+                    value={animalFormData.gender}
+                    onChange={(e) => setAnimalFormData({...animalFormData, gender: e.target.value as any})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  >
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Color *</label>
+                  <input
+                    type="text"
+                    required
+                    value={animalFormData.color}
+                    onChange={(e) => setAnimalFormData({...animalFormData, color: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status *</label>
+                  <select
+                    required
+                    value={animalFormData.status}
+                    onChange={(e) => setAnimalFormData({...animalFormData, status: e.target.value as any})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  >
+                    <option value="available">Available</option>
+                    <option value="breeding">Breeding</option>
+                    <option value="sold">Sold</option>
+                    <option value="reserved">Reserved</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Price ($)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={animalFormData.price}
+                    onChange={(e) => setAnimalFormData({...animalFormData, price: parseFloat(e.target.value) || 0})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Image URL *</label>
+                  <input
+                    type="url"
+                    required
+                    value={animalFormData.image_url}
+                    onChange={(e) => setAnimalFormData({...animalFormData, image_url: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Coat Type</label>
+                  <input
+                    type="text"
+                    value={animalFormData.coat_type}
+                    onChange={(e) => setAnimalFormData({...animalFormData, coat_type: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Size</label>
+                  <select
+                    value={animalFormData.size}
+                    onChange={(e) => setAnimalFormData({...animalFormData, size: e.target.value as any})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  >
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large</option>
+                    <option value="extra-large">Extra Large</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+                <textarea
+                  required
+                  rows={3}
+                  value={animalFormData.description}
+                  onChange={(e) => setAnimalFormData({...animalFormData, description: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Temperament (comma-separated)</label>
+                <input
+                  type="text"
+                  value={animalFormData.temperament}
+                  onChange={(e) => setAnimalFormData({...animalFormData, temperament: e.target.value})}
+                  placeholder="e.g., Friendly, Calm, Energetic"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Vaccinations (comma-separated)</label>
+                <input
+                  type="text"
+                  value={animalFormData.vaccinations}
+                  onChange={(e) => setAnimalFormData({...animalFormData, vaccinations: e.target.value})}
+                  placeholder="e.g., Rabies, DHPP, Bordetella"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
+              </div>
+              
+              {animalFormData.type === 'fowl' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Egg Production</label>
+                    <input
+                      type="text"
+                      value={animalFormData.egg_production}
+                      onChange={(e) => setAnimalFormData({...animalFormData, egg_production: e.target.value})}
+                      placeholder="e.g., 250 eggs/year"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
+                    <select
+                      value={animalFormData.purpose}
+                      onChange={(e) => setAnimalFormData({...animalFormData, purpose: e.target.value as any})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    >
+                      <option value="eggs">Eggs</option>
+                      <option value="meat">Meat</option>
+                      <option value="dual-purpose">Dual Purpose</option>
+                      <option value="ornamental">Ornamental</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
+              <div className="flex space-x-4 pt-4">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Adding...' : 'Add Animal'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddAnimalModal(false);
+                    resetAnimalForm();
+                  }}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Animal Modal */}
+      {showEditAnimalModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Edit Animal</h3>
+            <form onSubmit={handleUpdateAnimal} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={animalFormData.name}
+                    onChange={(e) => setAnimalFormData({...animalFormData, name: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Type *</label>
+                  <select
+                    required
+                    value={animalFormData.type}
+                    onChange={(e) => setAnimalFormData({...animalFormData, type: e.target.value as any})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  >
+                    <option value="rabbit">Rabbit</option>
+                    <option value="guinea-pig">Guinea Pig</option>
+                    <option value="dog">Dog</option>
+                    <option value="cat">Cat</option>
+                    <option value="fowl">Fowl</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Breed *</label>
+                  <input
+                    type="text"
+                    required
+                    value={animalFormData.breed}
+                    onChange={(e) => setAnimalFormData({...animalFormData, breed: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Age (months) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    value={animalFormData.age}
+                    onChange={(e) => setAnimalFormData({...animalFormData, age: parseInt(e.target.value)})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Weight (lbs) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    step="0.1"
+                    value={animalFormData.weight}
+                    onChange={(e) => setAnimalFormData({...animalFormData, weight: parseFloat(e.target.value)})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender *</label>
+                  <select
+                    required
+                    value={animalFormData.gender}
+                    onChange={(e) => setAnimalFormData({...animalFormData, gender: e.target.value as any})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  >
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Color *</label>
+                  <input
+                    type="text"
+                    required
+                    value={animalFormData.color}
+                    onChange={(e) => setAnimalFormData({...animalFormData, color: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status *</label>
+                  <select
+                    required
+                    value={animalFormData.status}
+                    onChange={(e) => setAnimalFormData({...animalFormData, status: e.target.value as any})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  >
+                    <option value="available">Available</option>
+                    <option value="breeding">Breeding</option>
+                    <option value="sold">Sold</option>
+                    <option value="reserved">Reserved</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Price ($)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={animalFormData.price}
+                    onChange={(e) => setAnimalFormData({...animalFormData, price: parseFloat(e.target.value) || 0})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Image URL *</label>
+                  <input
+                    type="url"
+                    required
+                    value={animalFormData.image_url}
+                    onChange={(e) => setAnimalFormData({...animalFormData, image_url: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Coat Type</label>
+                  <input
+                    type="text"
+                    value={animalFormData.coat_type}
+                    onChange={(e) => setAnimalFormData({...animalFormData, coat_type: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Size</label>
+                  <select
+                    value={animalFormData.size}
+                    onChange={(e) => setAnimalFormData({...animalFormData, size: e.target.value as any})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  >
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large</option>
+                    <option value="extra-large">Extra Large</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+                <textarea
+                  required
+                  rows={3}
+                  value={animalFormData.description}
+                  onChange={(e) => setAnimalFormData({...animalFormData, description: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Temperament (comma-separated)</label>
+                <input
+                  type="text"
+                  value={animalFormData.temperament}
+                  onChange={(e) => setAnimalFormData({...animalFormData, temperament: e.target.value})}
+                  placeholder="e.g., Friendly, Calm, Energetic"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Vaccinations (comma-separated)</label>
+                <input
+                  type="text"
+                  value={animalFormData.vaccinations}
+                  onChange={(e) => setAnimalFormData({...animalFormData, vaccinations: e.target.value})}
+                  placeholder="e.g., Rabies, DHPP, Bordetella"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
+              </div>
+              
+              {animalFormData.type === 'fowl' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Egg Production</label>
+                    <input
+                      type="text"
+                      value={animalFormData.egg_production}
+                      onChange={(e) => setAnimalFormData({...animalFormData, egg_production: e.target.value})}
+                      placeholder="e.g., 250 eggs/year"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
+                    <select
+                      value={animalFormData.purpose}
+                      onChange={(e) => setAnimalFormData({...animalFormData, purpose: e.target.value as any})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    >
+                      <option value="eggs">Eggs</option>
+                      <option value="meat">Meat</option>
+                      <option value="dual-purpose">Dual Purpose</option>
+                      <option value="ornamental">Ornamental</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
+              <div className="flex space-x-4 pt-4">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Updating...' : 'Update Animal'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditAnimalModal(false);
+                    setCurrentAnimal(null);
+                    resetAnimalForm();
+                  }}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Animal Confirmation Modal */}
+      {showDeleteAnimalModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Delete Animal</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete "{currentAnimal?.name}"? This action cannot be undone.
+            </p>
+            <div className="flex space-x-4">
+              <button
+                onClick={handleConfirmDeleteAnimal}
+                disabled={isSubmitting}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 disabled:opacity-50"
+              >
+                {isSubmitting ? 'Deleting...' : 'Delete'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowDeleteAnimalModal(false);
+                  setCurrentAnimal(null);
+                }}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Item Modal */}
       {showEditItemModal && (
