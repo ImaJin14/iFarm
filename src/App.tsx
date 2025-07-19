@@ -12,6 +12,7 @@ import NewsList from './pages/NewsList';
 import NewsDetail from './pages/NewsDetail';
 import BreedDetail from './pages/BreedDetail';
 import AnimalDetail from './pages/AnimalDetail';
+import GuideDetail from './pages/GuideDetail';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
             <Route path="/animals/:id" element={<AnimalDetail />} />
             <Route path="/news" element={<NewsList />} />
             <Route path="/news/:id" element={<NewsDetail />} />
+            <Route path="/guides/:id" element={<GuideDetail />} />
             <Route path="/management" element={<Management />} />
             <Route path="/education" element={<Education />} />
             <Route path="/contact" element={<Contact />} />

@@ -147,6 +147,13 @@ export default function Education() {
                       Read Guide
                       <ChevronRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
                     </button>
+                    <Link
+                      to={`/guides/${guide.id}`}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center group"
+                    >
+                      Read Guide
+                      <ChevronRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
+                    </Link>
                   </div>
                 </div>
               ))}
