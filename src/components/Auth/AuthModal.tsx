@@ -40,7 +40,11 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
       setFormData({ email: '', password: '', fullName: '', role: 'customer' });
     } catch (err) {
       console.error('Auth error:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      if (err instanceof Error && err.message.includes('User already registered')) {
+        setError('This email is already registered. Please sign in instead.');
+      } else {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      }
     } finally {
       setLoading(false);
     }
