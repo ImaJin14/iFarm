@@ -1,82 +1,20 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Book, Search, Clock, Star, ChevronRight, Users, Heart, Leaf, ExternalLink } from 'lucide-react';
+import { useEducationGuides } from '../hooks/useEducationGuides';
+import { useFAQs } from '../hooks/useFAQs';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
+import ErrorMessage from '../components/ui/ErrorMessage';
 
 export default function Education() {
+  const { guides, loading: guidesLoading, error: guidesError, refetch: refetchGuides } = useEducationGuides();
+  const { faqs, loading: faqsLoading, error: faqsError, refetch: refetchFaqs } = useFAQs();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showFeatureMessage, setShowFeatureMessage] = useState('');
 
-  const guides = [
-    {
-      id: '1',
-      title: 'Animal Care Basics for Beginners',
-      category: 'Care',
-      readTime: '10 min',
-      difficulty: 'Beginner',
-      rating: 4.8,
-      description: 'Learn the fundamental principles of proper animal care across all species, including housing, feeding, and daily maintenance.',
-      content: 'Comprehensive guide covering all aspects of basic animal care...',
-      imageUrl: 'https://images.pexels.com/photos/4588000/pexels-photo-4588000.jpeg?auto=compress&cs=tinysrgb&w=600'
-    },
-    {
-      id: '2',
-      title: 'Breeding Program Management',
-      category: 'Breeding',
-      readTime: '15 min',
-      difficulty: 'Advanced',
-      rating: 4.9,
-      description: 'Advanced strategies for managing successful breeding programs with genetic planning and record keeping.',
-      content: 'Detailed breeding program management strategies...',
-      imageUrl: 'https://images.pexels.com/photos/4588012/pexels-photo-4588012.jpeg?auto=compress&cs=tinysrgb&w=600'
-    },
-    {
-      id: '3',
-      title: 'Nutrition and Feeding Guidelines',
-      category: 'Nutrition',
-      readTime: '12 min',
-      difficulty: 'Intermediate',
-      rating: 4.7,
-      description: 'Complete nutrition guide including feed types, portions, and dietary requirements for different life stages.',
-      content: 'Comprehensive nutrition and feeding information...',
-      imageUrl: 'https://images.pexels.com/photos/4588030/pexels-photo-4588030.jpeg?auto=compress&cs=tinysrgb&w=600'
-    },
-    {
-      id: '4',
-      title: 'Disease Prevention and Health',
-      category: 'Health',
-      readTime: '18 min',
-      difficulty: 'Intermediate',
-      rating: 4.9,
-      description: 'Essential health monitoring, disease prevention strategies, and when to consult a veterinarian.',
-      content: 'Health and disease prevention guide...',
-      imageUrl: 'https://images.pexels.com/photos/4601880/pexels-photo-4601880.jpeg?auto=compress&cs=tinysrgb&w=600'
-    },
-    {
-      id: '5',
-      title: 'Housing and Environment Setup',
-      category: 'Housing',
-      readTime: '14 min',
-      difficulty: 'Beginner',
-      rating: 4.6,
-      description: 'Design and setup optimal living environments for animals, including enclosure selection and environmental controls.',
-      content: 'Housing and environment setup guide...',
-      imageUrl: 'https://images.pexels.com/photos/4588065/pexels-photo-4588065.jpeg?auto=compress&cs=tinysrgb&w=600'
-    },
-    {
-      id: '6',
-      title: 'Show Animal Preparation',
-      category: 'Showing',
-      readTime: '20 min',
-      difficulty: 'Advanced',
-      rating: 4.8,
-      description: 'Professional techniques for preparing animals for competitions, including grooming and conditioning.',
-      content: 'Show preparation techniques and strategies...',
-      imageUrl: 'https://images.pexels.com/photos/4587998/pexels-photo-4587998.jpeg?auto=compress&cs=tinysrgb&w=600'
-    }
-  ];
-
-  const categories = ['all', 'Care', 'Breeding', 'Nutrition', 'Health', 'Housing', 'Showing'];
+  // Get unique categories from guides
+  const categories = ['all', ...Array.from(new Set(guides.map(guide => guide.category)))];
 
   const filteredGuides = guides.filter(guide => {
     const matchesSearch = guide.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -85,28 +23,6 @@ export default function Education() {
     return matchesSearch && matchesCategory;
   });
 
-  const faqs = [
-    {
-      question: "How often should I feed my animals?",
-      answer: "Feeding frequency varies by species. Most adult animals should be fed twice daily - morning and evening. Provide species-appropriate food, measured portions, and always ensure fresh water is available."
-    },
-    {
-      question: "What are the signs of a healthy animal?",
-      answer: "Healthy animals are alert, have bright eyes, clean noses, good appetite, regular elimination, and appropriate coat/feather condition. They should be active and maintain normal weight for their species."
-    },
-    {
-      question: "How do I prepare for breeding season?",
-      answer: "Ensure breeding animals are in optimal health, maintain proper weight, provide excellent nutrition, and prepare appropriate nesting areas. Plan breeding schedules and maintain detailed records."
-    },
-    {
-      question: "What vaccinations do my animals need?",
-      answer: "Vaccination requirements vary by species and location. Common vaccinations include species-specific disease prevention. Consult with a veterinarian familiar with your animals for specific requirements."
-    },
-    {
-      question: "How much space do my animals need?",
-      answer: "Space requirements vary significantly by species and size. Generally, provide enough space for natural behaviors, exercise, and comfort. Research specific requirements for your animal type."
-    }
-  ];
 
   const handleFeatureClick = (feature: string) => {
     setShowFeatureMessage(feature);
@@ -175,59 +91,67 @@ export default function Education() {
       {/* Guides Grid */}
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredGuides.map((guide) => (
-              <div key={guide.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 group">
-                <div className="aspect-w-16 aspect-h-9 overflow-hidden">
-                  <img
-                    src={guide.imageUrl}
-                    alt={guide.title}
-                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-                
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                      {guide.category}
-                    </span>
-                    <div className="flex items-center space-x-1">
-                      <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                      <span className="text-sm text-gray-600">{guide.rating}</span>
-                    </div>
+          {guidesLoading ? (
+            <div className="flex justify-center py-12">
+              <LoadingSpinner size="lg" />
+            </div>
+          ) : guidesError ? (
+            <ErrorMessage message={guidesError} onRetry={refetchGuides} />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {filteredGuides.map((guide) => (
+                <div key={guide.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 group">
+                  <div className="aspect-w-16 aspect-h-9 overflow-hidden">
+                    <img
+                      src={guide.image_url}
+                      alt={guide.title}
+                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
                   </div>
                   
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">{guide.title}</h3>
-                  
-                  <p className="text-gray-600 mb-4">{guide.description}</p>
-                  
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-4 text-sm text-gray-500">
-                      <div className="flex items-center">
-                        <Clock className="h-4 w-4 mr-1" />
-                        {guide.readTime}
-                      </div>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        guide.difficulty === 'Beginner' ? 'bg-green-100 text-green-800' :
-                        guide.difficulty === 'Intermediate' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {guide.difficulty}
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                        {guide.category}
                       </span>
+                      <div className="flex items-center space-x-1">
+                        <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                        <span className="text-sm text-gray-600">{guide.rating}</span>
+                      </div>
                     </div>
+                    
+                    <h3 className="text-xl font-bold text-gray-900 mb-3">{guide.title}</h3>
+                    
+                    <p className="text-gray-600 mb-4">{guide.description}</p>
+                    
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-4 text-sm text-gray-500">
+                        <div className="flex items-center">
+                          <Clock className="h-4 w-4 mr-1" />
+                          {guide.read_time}
+                        </div>
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          guide.difficulty === 'Beginner' ? 'bg-green-100 text-green-800' :
+                          guide.difficulty === 'Intermediate' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {guide.difficulty}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={() => handleFeatureClick('Individual guide pages coming soon!')}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center group"
+                    >
+                      Read Guide
+                      <ChevronRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
+                    </button>
                   </div>
-                  
-                  <Link
-                    to={`/news/${guide.id}`}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center group"
-                  >
-                    Read Guide
-                    <ChevronRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
-                  </Link>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -303,14 +227,22 @@ export default function Education() {
             </p>
           </div>
 
-          <div className="space-y-6">
-            {faqs.map((faq, index) => (
-              <div key={index} className="bg-white rounded-xl shadow-lg p-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-3">{faq.question}</h3>
-                <p className="text-gray-600 leading-relaxed">{faq.answer}</p>
-              </div>
-            ))}
-          </div>
+          {faqsLoading ? (
+            <div className="flex justify-center py-12">
+              <LoadingSpinner size="lg" />
+            </div>
+          ) : faqsError ? (
+            <ErrorMessage message={faqsError} onRetry={refetchFaqs} />
+          ) : (
+            <div className="space-y-6">
+              {faqs.map((faq) => (
+                <div key={faq.id} className="bg-white rounded-xl shadow-lg p-6">
+                  <h3 className="text-lg font-bold text-gray-900 mb-3">{faq.question}</h3>
+                  <p className="text-gray-600 leading-relaxed">{faq.answer}</p>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="text-center mt-12">
             <p className="text-gray-600 mb-4">Don't see your question answered?</p>

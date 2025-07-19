@@ -318,6 +318,70 @@ export interface Database {
           updated_at?: string
         }
       }
+      education_guides: {
+        Row: {
+          id: string
+          title: string
+          category: string
+          read_time: string
+          difficulty: 'Beginner' | 'Intermediate' | 'Advanced'
+          rating: number
+          description: string
+          content: string
+          image_url: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          category: string
+          read_time: string
+          difficulty: 'Beginner' | 'Intermediate' | 'Advanced'
+          rating?: number
+          description: string
+          content: string
+          image_url: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          category?: string
+          read_time?: string
+          difficulty?: 'Beginner' | 'Intermediate' | 'Advanced'
+          rating?: number
+          description?: string
+          content?: string
+          image_url?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      faqs: {
+        Row: {
+          id: string
+          question: string
+          answer: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          question: string
+          answer: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          question?: string
+          answer?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
   }
 }
