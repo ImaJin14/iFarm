@@ -1,17 +1,31 @@
 import React, { useState } from 'react';
-import { BarChart3, Calendar, Heart, Package, DollarSign, Settings, AlertTriangle, TrendingUp } from 'lucide-react';
+import { BarChart3, Calendar, Heart, Package, DollarSign, Settings, AlertTriangle, TrendingUp, Plus, X } from 'lucide-react';
 import { useAnimals } from '../hooks/useAnimals';
 import { useBreedingRecords } from '../hooks/useBreedingRecords';
 import { useInventory } from '../hooks/useInventory';
+import { supabase } from '../lib/supabase';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 
 export default function Management() {
   const { animals, loading: animalsLoading } = useAnimals();
   const { breedingRecords, loading: breedingLoading } = useBreedingRecords();
-  const { inventory, loading: inventoryLoading } = useInventory();
+  const { inventory, loading: inventoryLoading, refetch: refetchInventory } = useInventory();
   const [activeTab, setActiveTab] = useState('overview');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
+  const [showAddItemModal, setShowAddItemModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    category: 'feed' as 'feed' | 'medical' | 'equipment' | 'bedding' | 'other',
+    animal_types: [] as string[],
+    quantity: 0,
+    unit: '',
+    low_stock_threshold: 0,
+    cost: 0,
+    supplier: '',
+    last_restocked: new Date().toISOString().split('T')[0]
+  });
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,6 +33,72 @@ export default function Management() {
       setIsAuthenticated(true);
     } else {
       alert('Invalid password. Use "admin123" for demo.');
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'number' ? parseFloat(value) || 0 : value
+    }));
+  };
+
+  const handleAnimalTypeChange = (animalType: string, checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      animal_types: checked 
+        ? [...prev.animal_types, animalType]
+        : prev.animal_types.filter(type => type !== animalType)
+    }));
+  };
+
+  const handleAddItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await supabase
+        .from('inventory')
+        .insert([{
+          name: formData.name,
+          category: formData.category,
+          animal_types: formData.animal_types,
+          quantity: formData.quantity,
+          unit: formData.unit,
+          low_stock_threshold: formData.low_stock_threshold,
+          cost: formData.cost,
+          supplier: formData.supplier || null,
+          last_restocked: formData.last_restocked
+        }]);
+
+      if (error) {
+        throw error;
+      }
+
+      // Reset form and close modal
+      setFormData({
+        name: '',
+        category: 'feed',
+        animal_types: [],
+        quantity: 0,
+        unit: '',
+        low_stock_threshold: 0,
+        cost: 0,
+        supplier: '',
+        last_restocked: new Date().toISOString().split('T')[0]
+      });
+      setShowAddItemModal(false);
+      
+      // Refetch inventory data
+      await refetchInventory();
+      
+      alert('Inventory item added successfully!');
+    } catch (error) {
+      console.error('Error adding inventory item:', error);
+      alert('Failed to add inventory item. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -271,7 +351,11 @@ export default function Management() {
             <div className="bg-white rounded-xl shadow-lg p-6">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold text-gray-900">Inventory Management</h3>
-                <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
+                <button 
+                  onClick={() => setShowAddItemModal(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
                   Add New Item
                 </button>
               </div>
@@ -392,6 +476,211 @@ export default function Management() {
           </div>
         )}
       </div>
+
+      {/* Add Item Modal */}
+      {showAddItemModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Add New Inventory Item</h2>
+              <button
+                onClick={() => setShowAddItemModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddItem} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                    Item Name *
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    required
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="e.g., Premium Rabbit Pellets"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
+                    Category *
+                  </label>
+                  <select
+                    id="category"
+                    name="category"
+                    required
+                    value={formData.category}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  >
+                    <option value="feed">Feed</option>
+                    <option value="medical">Medical</option>
+                    <option value="equipment">Equipment</option>
+                    <option value="bedding">Bedding</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Animal Types
+                </label>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  {['rabbit', 'guinea-pig', 'dog', 'cat', 'fowl'].map((animalType) => (
+                    <label key={animalType} className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.animal_types.includes(animalType)}
+                        onChange={(e) => handleAnimalTypeChange(animalType, e.target.checked)}
+                        className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                      />
+                      <span className="ml-2 text-sm text-gray-700 capitalize">
+                        {animalType === 'guinea-pig' ? 'Guinea Pig' : animalType}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-2">
+                    Current Quantity *
+                  </label>
+                  <input
+                    type="number"
+                    id="quantity"
+                    name="quantity"
+                    required
+                    min="0"
+                    value={formData.quantity}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="unit" className="block text-sm font-medium text-gray-700 mb-2">
+                    Unit *
+                  </label>
+                  <input
+                    type="text"
+                    id="unit"
+                    name="unit"
+                    required
+                    value={formData.unit}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="e.g., lbs, bags, bottles"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="low_stock_threshold" className="block text-sm font-medium text-gray-700 mb-2">
+                    Low Stock Alert *
+                  </label>
+                  <input
+                    type="number"
+                    id="low_stock_threshold"
+                    name="low_stock_threshold"
+                    required
+                    min="0"
+                    value={formData.low_stock_threshold}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="cost" className="block text-sm font-medium text-gray-700 mb-2">
+                    Cost per Unit *
+                  </label>
+                  <input
+                    type="number"
+                    id="cost"
+                    name="cost"
+                    required
+                    min="0"
+                    step="0.01"
+                    value={formData.cost}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="supplier" className="block text-sm font-medium text-gray-700 mb-2">
+                    Supplier
+                  </label>
+                  <input
+                    type="text"
+                    id="supplier"
+                    name="supplier"
+                    value={formData.supplier}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="e.g., Farm Supply Co."
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="last_restocked" className="block text-sm font-medium text-gray-700 mb-2">
+                  Last Restocked Date *
+                </label>
+                <input
+                  type="date"
+                  id="last_restocked"
+                  name="last_restocked"
+                  required
+                  value={formData.last_restocked}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowAddItemModal(false)}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <LoadingSpinner size="sm" className="mr-2" />
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Item
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
