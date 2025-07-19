@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BarChart3, Calendar, Heart, Package, DollarSign, Settings, AlertTriangle, TrendingUp, Plus, X } from 'lucide-react';
+import { BarChart3, Calendar, Heart, Package, DollarSign, Settings, AlertTriangle, TrendingUp, Plus, X, Edit } from 'lucide-react';
 import { useAnimals } from '../hooks/useAnimals';
 import { useBreedingRecords } from '../hooks/useBreedingRecords';
 import { useInventory } from '../hooks/useInventory';
@@ -15,6 +15,10 @@ export default function Management() {
   const [password, setPassword] = useState('');
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [showAddBreedingRecordModal, setShowAddBreedingRecordModal] = useState(false);
+  const [showEditItemModal, setShowEditItemModal] = useState(false);
+  const [showEditBreedingRecordModal, setShowEditBreedingRecordModal] = useState(false);
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [editingBreedingRecord, setEditingBreedingRecord] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -38,6 +42,38 @@ export default function Management() {
     status: 'planned' as 'planned' | 'bred' | 'born' | 'weaned',
     notes: ''
   });
+
+  const openEditItemModal = (item: any) => {
+    setEditingItem(item);
+    setFormData({
+      name: item.name,
+      category: item.category,
+      animal_types: item.animal_types || [],
+      quantity: item.quantity,
+      unit: item.unit,
+      low_stock_threshold: item.low_stock_threshold,
+      cost: item.cost,
+      supplier: item.supplier || '',
+      last_restocked: item.last_restocked
+    });
+    setShowEditItemModal(true);
+  };
+
+  const openEditBreedingRecordModal = (record: any) => {
+    setEditingBreedingRecord(record);
+    setBreedingRecordFormData({
+      sire_id: record.sire_id,
+      dam_id: record.dam_id,
+      animal_type: record.animal_type,
+      breeding_date: record.breeding_date,
+      expected_birth: record.expected_birth || '',
+      actual_birth: record.actual_birth || '',
+      litter_size: record.litter_size?.toString() || '',
+      status: record.status,
+      notes: record.notes || ''
+    });
+    setShowEditBreedingRecordModal(true);
+  };
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,6 +158,57 @@ export default function Management() {
     }
   };
 
+  const handleEditItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await supabase
+        .from('inventory')
+        .update({
+          name: formData.name,
+          category: formData.category,
+          animal_types: formData.animal_types,
+          quantity: formData.quantity,
+          unit: formData.unit,
+          low_stock_threshold: formData.low_stock_threshold,
+          cost: formData.cost,
+          supplier: formData.supplier || null,
+          last_restocked: formData.last_restocked
+        })
+        .eq('id', editingItem.id);
+
+      if (error) {
+        throw error;
+      }
+
+      // Reset form and close modal
+      setFormData({
+        name: '',
+        category: 'feed',
+        animal_types: [],
+        quantity: 0,
+        unit: '',
+        low_stock_threshold: 0,
+        cost: 0,
+        supplier: '',
+        last_restocked: new Date().toISOString().split('T')[0]
+      });
+      setShowEditItemModal(false);
+      setEditingItem(null);
+      
+      // Refetch inventory data
+      await refetchInventory();
+      
+      alert('Inventory item updated successfully!');
+    } catch (error) {
+      console.error('Error updating inventory item:', error);
+      alert('Failed to update inventory item. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleAddBreedingRecord = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -182,6 +269,73 @@ export default function Management() {
     } catch (error) {
       console.error('Error adding breeding record:', error);
       alert('Failed to add breeding record. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditBreedingRecord = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      // Calculate expected birth date if not provided
+      let expectedBirth = breedingRecordFormData.expected_birth;
+      if (!expectedBirth && breedingRecordFormData.breeding_date) {
+        const breedingDate = new Date(breedingRecordFormData.breeding_date);
+        // Add gestation period based on animal type
+        const gestationDays = {
+          'rabbit': 31,
+          'guinea-pig': 68,
+          'dog': 63,
+          'cat': 64,
+          'fowl': 21
+        };
+        breedingDate.setDate(breedingDate.getDate() + gestationDays[breedingRecordFormData.animal_type]);
+        expectedBirth = breedingDate.toISOString().split('T')[0];
+      }
+
+      const { error } = await supabase
+        .from('breeding_records')
+        .update({
+          sire_id: breedingRecordFormData.sire_id,
+          dam_id: breedingRecordFormData.dam_id,
+          animal_type: breedingRecordFormData.animal_type,
+          breeding_date: breedingRecordFormData.breeding_date,
+          expected_birth: expectedBirth,
+          actual_birth: breedingRecordFormData.actual_birth || null,
+          litter_size: breedingRecordFormData.litter_size ? parseInt(breedingRecordFormData.litter_size) : null,
+          status: breedingRecordFormData.status,
+          notes: breedingRecordFormData.notes
+        })
+        .eq('id', editingBreedingRecord.id);
+
+      if (error) {
+        throw error;
+      }
+
+      // Reset form and close modal
+      setBreedingRecordFormData({
+        sire_id: '',
+        dam_id: '',
+        animal_type: 'rabbit',
+        breeding_date: new Date().toISOString().split('T')[0],
+        expected_birth: '',
+        actual_birth: '',
+        litter_size: '',
+        status: 'planned',
+        notes: ''
+      });
+      setShowEditBreedingRecordModal(false);
+      setEditingBreedingRecord(null);
+      
+      // Refetch breeding records data
+      await refetch();
+      
+      alert('Breeding record updated successfully!');
+    } catch (error) {
+      console.error('Error updating breeding record:', error);
+      alert('Failed to update breeding record. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -460,6 +614,7 @@ export default function Management() {
                         <th className="text-left py-3 px-4 font-medium text-gray-700">Low Stock</th>
                         <th className="text-left py-3 px-4 font-medium text-gray-700">Cost</th>
                         <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -480,6 +635,14 @@ export default function Management() {
                                 In Stock
                               </span>
                             )}
+                          </td>
+                          <td className="py-3 px-4">
+                            <button
+                              onClick={() => openEditItemModal(item)}
+                              className="text-blue-600 hover:text-blue-800 transition-colors duration-200"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -521,6 +684,7 @@ export default function Management() {
                         <th className="text-left py-3 px-4 font-medium text-gray-700">Actual Birth</th>
                         <th className="text-left py-3 px-4 font-medium text-gray-700">Litter Size</th>
                         <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -539,6 +703,14 @@ export default function Management() {
                             }`}>
                               {record.status}
                             </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <button
+                              onClick={() => openEditBreedingRecordModal(record)}
+                              className="text-blue-600 hover:text-blue-800 transition-colors duration-200"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -565,6 +737,423 @@ export default function Management() {
           </div>
         )}
       </div>
+
+      {/* Edit Item Modal */}
+      {showEditItemModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Edit Inventory Item</h2>
+              <button
+                onClick={() => {
+                  setShowEditItemModal(false);
+                  setEditingItem(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditItem} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="edit-name" className="block text-sm font-medium text-gray-700 mb-2">
+                    Item Name *
+                  </label>
+                  <input
+                    type="text"
+                    id="edit-name"
+                    name="name"
+                    required
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="e.g., Premium Rabbit Pellets"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="edit-category" className="block text-sm font-medium text-gray-700 mb-2">
+                    Category *
+                  </label>
+                  <select
+                    id="edit-category"
+                    name="category"
+                    required
+                    value={formData.category}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  >
+                    <option value="feed">Feed</option>
+                    <option value="medical">Medical</option>
+                    <option value="equipment">Equipment</option>
+                    <option value="bedding">Bedding</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Animal Types
+                </label>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  {['rabbit', 'guinea-pig', 'dog', 'cat', 'fowl'].map((animalType) => (
+                    <label key={animalType} className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.animal_types.includes(animalType)}
+                        onChange={(e) => handleAnimalTypeChange(animalType, e.target.checked)}
+                        className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                      />
+                      <span className="ml-2 text-sm text-gray-700 capitalize">
+                        {animalType === 'guinea-pig' ? 'Guinea Pig' : animalType}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label htmlFor="edit-quantity" className="block text-sm font-medium text-gray-700 mb-2">
+                    Current Quantity *
+                  </label>
+                  <input
+                    type="number"
+                    id="edit-quantity"
+                    name="quantity"
+                    required
+                    min="0"
+                    value={formData.quantity}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="edit-unit" className="block text-sm font-medium text-gray-700 mb-2">
+                    Unit *
+                  </label>
+                  <input
+                    type="text"
+                    id="edit-unit"
+                    name="unit"
+                    required
+                    value={formData.unit}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="e.g., lbs, bags, bottles"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="edit-low_stock_threshold" className="block text-sm font-medium text-gray-700 mb-2">
+                    Low Stock Alert *
+                  </label>
+                  <input
+                    type="number"
+                    id="edit-low_stock_threshold"
+                    name="low_stock_threshold"
+                    required
+                    min="0"
+                    value={formData.low_stock_threshold}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="edit-cost" className="block text-sm font-medium text-gray-700 mb-2">
+                    Cost per Unit *
+                  </label>
+                  <input
+                    type="number"
+                    id="edit-cost"
+                    name="cost"
+                    required
+                    min="0"
+                    step="0.01"
+                    value={formData.cost}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="edit-supplier" className="block text-sm font-medium text-gray-700 mb-2">
+                    Supplier
+                  </label>
+                  <input
+                    type="text"
+                    id="edit-supplier"
+                    name="supplier"
+                    value={formData.supplier}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="e.g., Farm Supply Co."
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="edit-last_restocked" className="block text-sm font-medium text-gray-700 mb-2">
+                  Last Restocked Date *
+                </label>
+                <input
+                  type="date"
+                  id="edit-last_restocked"
+                  name="last_restocked"
+                  required
+                  value={formData.last_restocked}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditItemModal(false);
+                    setEditingItem(null);
+                  }}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <LoadingSpinner size="sm" className="mr-2" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Update Item
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Breeding Record Modal */}
+      {showEditBreedingRecordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Edit Breeding Record</h2>
+              <button
+                onClick={() => {
+                  setShowEditBreedingRecordModal(false);
+                  setEditingBreedingRecord(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditBreedingRecord} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="edit-sire_id" className="block text-sm font-medium text-gray-700 mb-2">
+                    Sire ID *
+                  </label>
+                  <input
+                    type="text"
+                    id="edit-sire_id"
+                    name="sire_id"
+                    required
+                    value={breedingRecordFormData.sire_id}
+                    onChange={handleBreedingRecordInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="e.g., BUCK001"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="edit-dam_id" className="block text-sm font-medium text-gray-700 mb-2">
+                    Dam ID *
+                  </label>
+                  <input
+                    type="text"
+                    id="edit-dam_id"
+                    name="dam_id"
+                    required
+                    value={breedingRecordFormData.dam_id}
+                    onChange={handleBreedingRecordInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="e.g., DOE001"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="edit-animal_type" className="block text-sm font-medium text-gray-700 mb-2">
+                    Animal Type *
+                  </label>
+                  <select
+                    id="edit-animal_type"
+                    name="animal_type"
+                    required
+                    value={breedingRecordFormData.animal_type}
+                    onChange={handleBreedingRecordInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  >
+                    <option value="rabbit">Rabbit</option>
+                    <option value="guinea-pig">Guinea Pig</option>
+                    <option value="dog">Dog</option>
+                    <option value="cat">Cat</option>
+                    <option value="fowl">Fowl</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="edit-status" className="block text-sm font-medium text-gray-700 mb-2">
+                    Status *
+                  </label>
+                  <select
+                    id="edit-status"
+                    name="status"
+                    required
+                    value={breedingRecordFormData.status}
+                    onChange={handleBreedingRecordInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  >
+                    <option value="planned">Planned</option>
+                    <option value="bred">Bred</option>
+                    <option value="born">Born</option>
+                    <option value="weaned">Weaned</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="edit-breeding_date" className="block text-sm font-medium text-gray-700 mb-2">
+                    Breeding Date *
+                  </label>
+                  <input
+                    type="date"
+                    id="edit-breeding_date"
+                    name="breeding_date"
+                    required
+                    value={breedingRecordFormData.breeding_date}
+                    onChange={handleBreedingRecordInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="edit-expected_birth" className="block text-sm font-medium text-gray-700 mb-2">
+                    Expected Birth Date
+                  </label>
+                  <input
+                    type="date"
+                    id="edit-expected_birth"
+                    name="expected_birth"
+                    value={breedingRecordFormData.expected_birth}
+                    onChange={handleBreedingRecordInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Leave blank to auto-calculate based on animal type</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="edit-actual_birth" className="block text-sm font-medium text-gray-700 mb-2">
+                    Actual Birth Date
+                  </label>
+                  <input
+                    type="date"
+                    id="edit-actual_birth"
+                    name="actual_birth"
+                    value={breedingRecordFormData.actual_birth}
+                    onChange={handleBreedingRecordInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="edit-litter_size" className="block text-sm font-medium text-gray-700 mb-2">
+                    Litter Size
+                  </label>
+                  <input
+                    type="number"
+                    id="edit-litter_size"
+                    name="litter_size"
+                    min="0"
+                    value={breedingRecordFormData.litter_size}
+                    onChange={handleBreedingRecordInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="Number of offspring"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="edit-notes" className="block text-sm font-medium text-gray-700 mb-2">
+                  Notes
+                </label>
+                <textarea
+                  id="edit-notes"
+                  name="notes"
+                  rows={4}
+                  value={breedingRecordFormData.notes}
+                  onChange={handleBreedingRecordInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  placeholder="Additional notes about this breeding record..."
+                />
+              </div>
+
+              <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditBreedingRecordModal(false);
+                    setEditingBreedingRecord(null);
+                  }}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <LoadingSpinner size="sm" className="mr-2" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Update Record
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Add Item Modal */}
       {showAddItemModal && (
