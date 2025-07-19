@@ -1,44 +1,17 @@
 import React, { useState } from 'react';
-import { BarChart3, Calendar, Heart, Package, DollarSign, Settings, AlertTriangle, TrendingUp, Plus, X } from 'lucide-react';
+import { BarChart3, Calendar, Heart, Package, DollarSign, Settings, AlertTriangle, TrendingUp } from 'lucide-react';
 import { useAnimals } from '../hooks/useAnimals';
 import { useBreedingRecords } from '../hooks/useBreedingRecords';
 import { useInventory } from '../hooks/useInventory';
-import { supabase } from '../lib/supabase';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 
 export default function Management() {
   const { animals, loading: animalsLoading } = useAnimals();
-  const { breedingRecords, loading: breedingLoading, refetch: refetchBreeding } = useBreedingRecords();
-  const { inventory, loading: inventoryLoading, refetch: refetchInventory } = useInventory();
+  const { breedingRecords, loading: breedingLoading } = useBreedingRecords();
+  const { inventory, loading: inventoryLoading } = useInventory();
   const [activeTab, setActiveTab] = useState('overview');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
-  const [showInventoryModal, setShowInventoryModal] = useState(false);
-  const [showBreedingModal, setShowBreedingModal] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Inventory form state
-  const [inventoryForm, setInventoryForm] = useState({
-    name: '',
-    category: 'feed',
-    animal_types: [],
-    quantity: 0,
-    unit: '',
-    low_stock_threshold: 0,
-    cost: 0,
-    supplier: '',
-    last_restocked: new Date().toISOString().split('T')[0]
-  });
-
-  // Breeding record form state
-  const [breedingForm, setBreedingForm] = useState({
-    sire_id: '',
-    dam_id: '',
-    animal_type: 'rabbit',
-    breeding_date: new Date().toISOString().split('T')[0],
-    expected_birth: '',
-    notes: ''
-  });
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,98 +20,6 @@ export default function Management() {
     } else {
       alert('Invalid password. Use "admin123" for demo.');
     }
-  };
-
-  const handleAddInventoryItem = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    try {
-      const { error } = await supabase
-        .from('inventory')
-        .insert([inventoryForm]);
-
-      if (error) throw error;
-
-      // Reset form and close modal
-      setInventoryForm({
-        name: '',
-        category: 'feed',
-        animal_types: [],
-        quantity: 0,
-        unit: '',
-        low_stock_threshold: 0,
-        cost: 0,
-        supplier: '',
-        last_restocked: new Date().toISOString().split('T')[0]
-      });
-      setShowInventoryModal(false);
-      refetchInventory();
-      alert('Inventory item added successfully!');
-    } catch (error) {
-      console.error('Error adding inventory item:', error);
-      alert('Failed to add inventory item. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleAddBreedingRecord = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    try {
-      // Calculate expected birth date (add gestation period based on animal type)
-      const gestationPeriods = {
-        rabbit: 31,
-        'guinea-pig': 65,
-        dog: 63,
-        cat: 65,
-        fowl: 21
-      };
-
-      const breedingDate = new Date(breedingForm.breeding_date);
-      const gestationDays = gestationPeriods[breedingForm.animal_type as keyof typeof gestationPeriods];
-      const expectedBirth = new Date(breedingDate.getTime() + gestationDays * 24 * 60 * 60 * 1000);
-
-      const recordData = {
-        ...breedingForm,
-        expected_birth: expectedBirth.toISOString().split('T')[0]
-      };
-
-      const { error } = await supabase
-        .from('breeding_records')
-        .insert([recordData]);
-
-      if (error) throw error;
-
-      // Reset form and close modal
-      setBreedingForm({
-        sire_id: '',
-        dam_id: '',
-        animal_type: 'rabbit',
-        breeding_date: new Date().toISOString().split('T')[0],
-        expected_birth: '',
-        notes: ''
-      });
-      setShowBreedingModal(false);
-      refetchBreeding();
-      alert('Breeding record added successfully!');
-    } catch (error) {
-      console.error('Error adding breeding record:', error);
-      alert('Failed to add breeding record. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleAnimalTypeToggle = (animalType: string) => {
-    setInventoryForm(prev => ({
-      ...prev,
-      animal_types: prev.animal_types.includes(animalType)
-        ? prev.animal_types.filter(type => type !== animalType)
-        : [...prev.animal_types, animalType]
-    }));
   };
 
   if (!isAuthenticated) {
@@ -391,8 +272,6 @@ export default function Management() {
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold text-gray-900">Inventory Management</h3>
                 <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
-                  onClick={() => setShowInventoryModal(true)}
-                  <Plus className="h-4 w-4 mr-2 inline" />
                   Add New Item
                 </button>
               </div>
@@ -450,8 +329,6 @@ export default function Management() {
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold text-gray-900">Breeding Records</h3>
                 <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
-                  onClick={() => setShowBreedingModal(true)}
-                  <Plus className="h-4 w-4 mr-2 inline" />
                   New Breeding Record
                 </button>
               </div>
@@ -515,262 +392,6 @@ export default function Management() {
           </div>
         )}
       </div>
-
-      {/* Inventory Modal */}
-      {showInventoryModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-gray-900">Add New Inventory Item</h3>
-              <button
-                onClick={() => setShowInventoryModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddInventoryItem} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Item Name</label>
-                <input
-                  type="text"
-                  required
-                  value={inventoryForm.name}
-                  onChange={(e) => setInventoryForm(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  placeholder="Enter item name"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                <select
-                  value={inventoryForm.category}
-                  onChange={(e) => setInventoryForm(prev => ({ ...prev, category: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                >
-                  <option value="feed">Feed</option>
-                  <option value="medical">Medical</option>
-                  <option value="equipment">Equipment</option>
-                  <option value="bedding">Bedding</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Animal Types</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {['rabbit', 'guinea-pig', 'dog', 'cat', 'fowl'].map(type => (
-                    <label key={type} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={inventoryForm.animal_types.includes(type)}
-                        onChange={() => handleAnimalTypeToggle(type)}
-                        className="mr-2"
-                      />
-                      <span className="text-sm capitalize">{type.replace('-', ' ')}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    value={inventoryForm.quantity}
-                    onChange={(e) => setInventoryForm(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
-                  <input
-                    type="text"
-                    required
-                    value={inventoryForm.unit}
-                    onChange={(e) => setInventoryForm(prev => ({ ...prev, unit: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                    placeholder="lbs, bags, etc."
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Low Stock Threshold</label>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    value={inventoryForm.low_stock_threshold}
-                    onChange={(e) => setInventoryForm(prev => ({ ...prev, low_stock_threshold: parseInt(e.target.value) || 0 }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Cost ($)</label>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    step="0.01"
-                    value={inventoryForm.cost}
-                    onChange={(e) => setInventoryForm(prev => ({ ...prev, cost: parseFloat(e.target.value) || 0 }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Supplier (Optional)</label>
-                <input
-                  type="text"
-                  value={inventoryForm.supplier}
-                  onChange={(e) => setInventoryForm(prev => ({ ...prev, supplier: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  placeholder="Supplier name"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Last Restocked</label>
-                <input
-                  type="date"
-                  required
-                  value={inventoryForm.last_restocked}
-                  onChange={(e) => setInventoryForm(prev => ({ ...prev, last_restocked: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                />
-              </div>
-
-              <div className="flex space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowInventoryModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 disabled:opacity-50"
-                >
-                  {isSubmitting ? 'Adding...' : 'Add Item'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Breeding Record Modal */}
-      {showBreedingModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-gray-900">Add New Breeding Record</h3>
-              <button
-                onClick={() => setShowBreedingModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddBreedingRecord} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Sire ID</label>
-                <input
-                  type="text"
-                  required
-                  value={breedingForm.sire_id}
-                  onChange={(e) => setBreedingForm(prev => ({ ...prev, sire_id: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  placeholder="Male animal ID"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Dam ID</label>
-                <input
-                  type="text"
-                  required
-                  value={breedingForm.dam_id}
-                  onChange={(e) => setBreedingForm(prev => ({ ...prev, dam_id: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  placeholder="Female animal ID"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Animal Type</label>
-                <select
-                  value={breedingForm.animal_type}
-                  onChange={(e) => setBreedingForm(prev => ({ ...prev, animal_type: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                >
-                  <option value="rabbit">Rabbit</option>
-                  <option value="guinea-pig">Guinea Pig</option>
-                  <option value="dog">Dog</option>
-                  <option value="cat">Cat</option>
-                  <option value="fowl">Fowl</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Breeding Date</label>
-                <input
-                  type="date"
-                  required
-                  value={breedingForm.breeding_date}
-                  onChange={(e) => setBreedingForm(prev => ({ ...prev, breeding_date: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>
-                <textarea
-                  value={breedingForm.notes}
-                  onChange={(e) => setBreedingForm(prev => ({ ...prev, notes: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  rows={3}
-                  placeholder="Additional notes about this breeding..."
-                />
-              </div>
-
-              <div className="bg-blue-50 p-3 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> Expected birth date will be automatically calculated based on the animal type's gestation period.
-                </p>
-              </div>
-
-              <div className="flex space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowBreedingModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 disabled:opacity-50"
-                >
-                  {isSubmitting ? 'Adding...' : 'Add Record'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
