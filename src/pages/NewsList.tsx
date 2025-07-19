@@ -95,7 +95,7 @@ export default function NewsList() {
                 <article key={news.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
                   <div className="aspect-w-16 aspect-h-9 overflow-hidden">
                     <img
-                      src={news.imageUrl}
+                      src={news.image_url}
                       alt={news.title}
                       className="w-full h-48 object-cover hover:scale-105 transition-transform duration-300"
                     />

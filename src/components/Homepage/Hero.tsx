@@ -64,7 +64,7 @@ export default function Hero() {
           <div className="relative">
             <div className="aspect-square rounded-2xl overflow-hidden shadow-2xl">
               <img
-                src=""
+                src="https://images.pexels.com/photos/4588000/pexels-photo-4588000.jpeg?auto=compress&cs=tinysrgb&w=800"
                 alt="Beautiful animals at iFarm"
                 className="w-full h-full object-cover"
               />
