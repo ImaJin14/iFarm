@@ -32,11 +32,20 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
         await signUp(formData.email, formData.password, formData.fullName, formData.role);
         alert('Account created successfully! Please check your email to verify your account.');
         onClose();
+        // Reset form data after successful sign-up
         setFormData({ email: '', password: '', fullName: '', role: 'customer' });
       } else {
+        // For sign-in, don't pass role - it should come from the stored user data
         await signIn(formData.email, formData.password);
         onClose();
-        setFormData({ email: '', password: '', fullName: '', role: 'customer' });
+        // Reset form data after successful sign-in, but don't reset role to 'customer'
+        // since the user's actual role should be maintained in the auth context
+        setFormData(prev => ({ 
+          email: '', 
+          password: '', 
+          fullName: '', 
+          role: prev.role // Keep the role as is, don't reset to 'customer'
+        }));
       }
     } catch (err) {
       console.error('Auth error:', err);
@@ -61,7 +70,14 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
   const toggleMode = () => {
     setIsSignUp(!isSignUp);
     setError(null);
-    setFormData({ email: '', password: '', fullName: '', role: 'customer' });
+    // Only reset role to 'customer' when switching to sign-up mode
+    // For sign-in mode, the role field is not relevant
+    setFormData({ 
+      email: '', 
+      password: '', 
+      fullName: '', 
+      role: 'customer' 
+    });
   };
 
   // Reset mode when modal opens/closes
@@ -69,6 +85,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
     if (isOpen) {
       setIsSignUp(initialMode === 'signup');
       setError(null);
+      // Only reset to default customer role when opening the modal
       setFormData({ email: '', password: '', fullName: '', role: 'customer' });
     }
   }, [isOpen, initialMode]);
