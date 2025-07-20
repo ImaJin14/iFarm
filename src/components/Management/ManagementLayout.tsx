@@ -17,7 +17,6 @@ import {
   Info,
   Phone,
   Package2,
-  Pill,
   Menu,
   X
 } from 'lucide-react';

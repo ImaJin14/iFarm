@@ -2,46 +2,45 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/supabase';
 
-type Animal = Database['public']['Tables']['animals']['Row'] & {
-  breeds?: Database['public']['Tables']['breeds']['Row'];
-  facilities?: Database['public']['Tables']['facilities']['Row'];
-  age_months?: number;
-  breed?: string; // For backward compatibility
-  weight?: number; // For backward compatibility
-  type?: string; // For backward compatibility
-};
+type Animal = Database['public']['Tables']['animals']['Row'];
+type AnimalInsert = Database['public']['Tables']['animals']['Insert'];
+type AnimalUpdate = Database['public']['Tables']['animals']['Update'];
 
-type AvailableAnimal = Database['public']['Views']['available_animals_view']['Row'];
-
-export interface UseAnimals {
-  animals: Animal[];
-  loading: boolean;
-  error: string | null;
-  refetch: () => Promise<void>;
+interface AnimalWithDetails extends Animal {
+  breeds?: {
+    name: string;
+    type: Database['public']['Enums']['animal_type'];
+    description: string;
+  };
+  facilities?: {
+    name: string;
+    facility_type: string;
+  };
+  genetic_lines?: {
+    name: string;
+    description: string;
+  };
+  sire?: {
+    name: string;
+    registration_number: string;
+  };
+  dam?: {
+    name: string;
+    registration_number: string;
+  };
 }
 
-// Helper function to calculate age in months
-const calculateAgeMonths = (birthDate: string | null): number => {
-  if (!birthDate) return 0;
-  
-  const birth = new Date(birthDate);
-  const now = new Date();
-  const diffTime = Math.abs(now.getTime() - birth.getTime());
-  const diffMonths = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30.44));
-  return diffMonths;
-};
+interface AnimalFilters {
+  breed_id?: string;
+  status?: Database['public']['Enums']['animal_status'];
+  gender?: Database['public']['Enums']['animal_gender'];
+  facility_id?: string;
+  is_for_sale?: boolean;
+  is_breeding_quality?: boolean;
+}
 
-// Helper function to adapt database data to component expectations
-const adaptAnimalData = (dbAnimal: any): Animal => ({
-  ...dbAnimal,
-  age_months: calculateAgeMonths(dbAnimal.date_of_birth),
-  breed: dbAnimal.breeds?.name || 'Unknown Breed',
-  weight: dbAnimal.weight_lbs,
-  type: dbAnimal.breeds?.type || 'rabbit'
-});
-
-export function useAnimals(): UseAnimals {
-  const [animals, setAnimals] = useState<Animal[]>([]);
+export const useAnimals = (filters?: AnimalFilters) => {
+  const [animals, setAnimals] = useState<AnimalWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,36 +49,61 @@ export function useAnimals(): UseAnimals {
       setLoading(true);
       setError(null);
       
-      const { data, error: supabaseError } = await supabase
+      let query = supabase
         .from('animals')
         .select(`
           *,
           breeds!inner(
-            id,
             name,
             type,
-            characteristics,
-            description,
-            image_url,
-            price_range_min,
-            price_range_max
+            description
           ),
           facilities(
-            id,
             name,
             facility_type
+          ),
+          genetic_lines(
+            name,
+            description
+          ),
+          sire:animals!animals_sire_id_fkey(
+            name,
+            registration_number
+          ),
+          dam:animals!animals_dam_id_fkey(
+            name,
+            registration_number
           )
         `)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
-      if (supabaseError) {
-        throw supabaseError;
+      // Apply filters
+      if (filters) {
+        if (filters.breed_id) {
+          query = query.eq('breed_id', filters.breed_id);
+        }
+        if (filters.status) {
+          query = query.eq('status', filters.status);
+        }
+        if (filters.gender) {
+          query = query.eq('gender', filters.gender);
+        }
+        if (filters.facility_id) {
+          query = query.eq('facility_id', filters.facility_id);
+        }
+        if (filters.is_for_sale !== undefined) {
+          query = query.eq('is_for_sale', filters.is_for_sale);
+        }
+        if (filters.is_breeding_quality !== undefined) {
+          query = query.eq('is_breeding_quality', filters.is_breeding_quality);
+        }
       }
 
-      // Transform data to match component expectations
-      const adaptedAnimals = (data || []).map(adaptAnimalData);
-      setAnimals(adaptedAnimals);
+      const { data, error } = await query;
+
+      if (error) throw error;
+      setAnimals(data || []);
     } catch (err) {
       console.error('Error fetching animals:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch animals');
@@ -88,132 +112,222 @@ export function useAnimals(): UseAnimals {
     }
   };
 
+  const createAnimal = async (animalData: AnimalInsert) => {
+    try {
+      const { data, error } = await supabase
+        .from('animals')
+        .insert([animalData])
+        .select()
+        .single();
+
+      if (error) throw error;
+      await fetchAnimals();
+      return data;
+    } catch (err) {
+      console.error('Error creating animal:', err);
+      throw err;
+    }
+  };
+
+  const updateAnimal = async (id: string, updates: AnimalUpdate) => {
+    try {
+      const { data, error } = await supabase
+        .from('animals')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      await fetchAnimals();
+      return data;
+    } catch (err) {
+      console.error('Error updating animal:', err);
+      throw err;
+    }
+  };
+
+  const deleteAnimal = async (id: string) => {
+    try {
+      // Check if animal has dependents (offspring, breeding records, etc.)
+      const { data: breedingRecords, error: breedingError } = await supabase
+        .from('breeding_records')
+        .select('id')
+        .or(`sire_id.eq.${id},dam_id.eq.${id}`)
+        .limit(1);
+
+      if (breedingError) throw breedingError;
+
+      if (breedingRecords && breedingRecords.length > 0) {
+        throw new Error('Cannot delete animal with breeding records. Consider marking as inactive instead.');
+      }
+
+      // Soft delete - mark as inactive instead of hard delete
+      const { error } = await supabase
+        .from('animals')
+        .update({ is_active: false })
+        .eq('id', id);
+
+      if (error) throw error;
+      await fetchAnimals();
+    } catch (err) {
+      console.error('Error deleting animal:', err);
+      throw err;
+    }
+  };
+
+  const getAvailableAnimals = () => {
+    return animals.filter(animal => animal.status === 'available' && animal.is_for_sale);
+  };
+
+  const getBreedingAnimals = () => {
+    return animals.filter(animal => animal.is_breeding_quality);
+  };
+
+  const getAnimalsByBreed = (breedId: string) => {
+    return animals.filter(animal => animal.breed_id === breedId);
+  };
+
+  const getAnimalsByFacility = (facilityId: string) => {
+    return animals.filter(animal => animal.facility_id === facilityId);
+  };
+
+  const searchAnimals = (searchTerm: string) => {
+    const term = searchTerm.toLowerCase();
+    return animals.filter(animal =>
+      animal.name.toLowerCase().includes(term) ||
+      animal.registration_number?.toLowerCase().includes(term) ||
+      animal.color.toLowerCase().includes(term) ||
+      animal.breeds?.name.toLowerCase().includes(term)
+    );
+  };
+
+  const getAnimalStats = () => {
+    const total = animals.length;
+    const available = animals.filter(a => a.status === 'available').length;
+    const breeding = animals.filter(a => a.status === 'breeding').length;
+    const sold = animals.filter(a => a.status === 'sold').length;
+    const forSale = animals.filter(a => a.is_for_sale).length;
+    const breedingQuality = animals.filter(a => a.is_breeding_quality).length;
+
+    const avgPrice = animals
+      .filter(a => a.price && a.is_for_sale)
+      .reduce((sum, a) => sum + (a.price || 0), 0) / forSale || 0;
+
+    return {
+      total,
+      available,
+      breeding,
+      sold,
+      forSale,
+      breedingQuality,
+      avgPrice
+    };
+  };
+
+  const calculateAge = (birthDate: string | null) => {
+    if (!birthDate) return null;
+    
+    const birth = new Date(birthDate);
+    const today = new Date();
+    const diffTime = Math.abs(today.getTime() - birth.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 30) {
+      return `${diffDays} days`;
+    } else if (diffDays < 365) {
+      const months = Math.floor(diffDays / 30);
+      return `${months} month${months > 1 ? 's' : ''}`;
+    } else {
+      const years = Math.floor(diffDays / 365);
+      const remainingMonths = Math.floor((diffDays % 365) / 30);
+      return `${years} year${years > 1 ? 's' : ''}${remainingMonths > 0 ? `, ${remainingMonths} month${remainingMonths > 1 ? 's' : ''}` : ''}`;
+    }
+  };
+
   useEffect(() => {
     fetchAnimals();
-  }, []);
+  }, [filters]);
 
   return {
     animals,
     loading,
     error,
-    refetch: fetchAnimals
+    createAnimal,
+    updateAnimal,
+    deleteAnimal,
+    refetch: fetchAnimals,
+    getAvailableAnimals,
+    getBreedingAnimals,
+    getAnimalsByBreed,
+    getAnimalsByFacility,
+    searchAnimals,
+    getAnimalStats,
+    calculateAge
   };
-}
+};
 
-export function useAnimal(id: string) {
-  const [animal, setAnimal] = useState<Animal | null>(null);
+// Individual animal hook for detail pages
+export const useAnimal = (animalId: string) => {
+  const [animal, setAnimal] = useState<AnimalWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchAnimal = async () => {
-      if (!id) return;
-      
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const { data, error: supabaseError } = await supabase
-          .from('animals')
-          .select(`
-            *,
-            breeds!inner(
-              id,
-              name,
-              type,
-              characteristics,
-              description,
-              image_url,
-              origin_country,
-              average_weight_min,
-              average_weight_max,
-              average_lifespan_years,
-              primary_uses,
-              care_level
-            ),
-            facilities(
-              id,
-              name,
-              facility_type,
-              location
-            ),
-            sire:animals!animals_sire_id_fkey(
-              id,
-              name,
-              registration_number
-            ),
-            dam:animals!animals_dam_id_fkey(
-              id,
-              name,
-              registration_number
-            )
-          `)
-          .eq('id', id)
-          .eq('is_active', true)
-          .single();
-
-        if (supabaseError) {
-          throw supabaseError;
-        }
-
-        if (data) {
-          const adaptedAnimal = adaptAnimalData(data);
-          setAnimal(adaptedAnimal);
-        }
-      } catch (err) {
-        console.error('Error fetching animal:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch animal');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAnimal();
-  }, [id]);
-
-  return {
-    animal,
-    loading,
-    error
-  };
-}
-
-export function useAvailableAnimals() {
-  const [animals, setAnimals] = useState<AvailableAnimal[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchAvailableAnimals = async () => {
+  const fetchAnimal = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const { data, error: supabaseError } = await supabase
-        .from('available_animals_view')
-        .select('*')
-        .order('name');
+      const { data, error } = await supabase
+        .from('animals')
+        .select(`
+          *,
+          breeds!inner(
+            name,
+            type,
+            description
+          ),
+          facilities(
+            name,
+            facility_type
+          ),
+          genetic_lines(
+            name,
+            description
+          ),
+          sire:animals!animals_sire_id_fkey(
+            name,
+            registration_number
+          ),
+          dam:animals!animals_dam_id_fkey(
+            name,
+            registration_number
+          )
+        `)
+        .eq('id', animalId)
+        .eq('is_active', true)
+        .single();
 
-      if (supabaseError) {
-        throw supabaseError;
-      }
-
-      setAnimals(data || []);
+      if (error) throw error;
+      setAnimal(data);
     } catch (err) {
-      console.error('Error fetching available animals:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch available animals');
+      console.error('Error fetching animal:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch animal');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAvailableAnimals();
-  }, []);
+    if (animalId) {
+      fetchAnimal();
+    }
+  }, [animalId]);
 
   return {
-    animals,
+    animal,
     loading,
     error,
-    refetch: fetchAvailableAnimals
+    refetch: fetchAnimal
   };
-}
+};
