@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.warn('Auth loading timeout, forcing completion');
         setLoading(false);
       }
-    }, 8000);
+    }, 20000);
 
     let mounted = true;
 
