@@ -21,6 +21,7 @@ interface AuthContextType {
   isAdministrator: () => boolean;
   isFarmUser: () => boolean;
   isCustomer: () => boolean;
+  refreshUserProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const initializeAuth = async () => {
       try {
+        console.log('Initializing authentication...');
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (!mounted) return;
@@ -53,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         
+        console.log('Session retrieved:', session ? 'Found' : 'None');
         setSession(session);
         if (session?.user) {
           await fetchUserProfile(session.user);
@@ -70,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
       
-      console.log('Auth state changed:', event);
+      console.log('Auth state changed:', event, session ? 'with session' : 'no session');
       
       if (event === 'SIGNED_OUT' || !session) {
         setUser(null);
@@ -89,50 +92,100 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const fetchUserProfile = async (authUser: User) => {
-    console.log('Fetching profile for:', authUser.id);
+  const fetchUserProfile = async (authUser: User, retryCount = 0) => {
+    console.log(`Fetching profile for user: ${authUser.id} (attempt ${retryCount + 1})`);
     
     try {
-      // First, try to get the user profile
+      // Add a small delay for the first retry to allow RLS policies to settle
+      if (retryCount > 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      // Try to get the user profile with better error handling
       const { data, error } = await supabase
         .from('users')
-        .select('role, full_name')
+        .select('role, full_name, email, is_active')
         .eq('id', authUser.id)
         .single();
 
       if (error) {
-        console.error('Profile fetch error:', error);
+        console.error('Profile fetch error:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
         
         if (error.code === 'PGRST116') {
           // User doesn't exist, try to create
-          console.log('Creating user profile...');
+          console.log('User profile not found, attempting to create...');
           await createUserProfile(authUser);
-        } else if (error.message?.includes('permission denied') || error.code === '42501') {
-          // RLS policy issue
-          console.warn('RLS permission denied, using fallback');
-          setUserWithFallback(authUser);
-        } else {
-          // Other error, use fallback
-          setUserWithFallback(authUser);
+          return;
+        } 
+        
+        if ((error.message?.includes('permission denied') || error.code === '42501') && retryCount < 2) {
+          // RLS policy issue, retry up to 2 times
+          console.warn(`RLS permission denied, retrying... (${retryCount + 1}/3)`);
+          await fetchUserProfile(authUser, retryCount + 1);
+          return;
         }
-      } else {
-        // Success
-        console.log('Profile found:', data);
-        setUser({
-          ...authUser,
+        
+        if (error.code === 'PGRST301' && retryCount < 2) {
+          // Multiple rows returned, this shouldn't happen but let's handle it
+          console.warn('Multiple user records found, using first one');
+          const { data: multiData, error: multiError } = await supabase
+            .from('users')
+            .select('role, full_name, email, is_active')
+            .eq('id', authUser.id)
+            .limit(1)
+            .single();
+            
+          if (!multiError && multiData) {
+            setUserWithProfile(authUser, multiData);
+            return;
+          }
+        }
+        
+        // For any other error after retries, use fallback
+        console.warn('Using fallback user data after error:', error.message);
+        setUserWithFallback(authUser);
+        
+      } else if (data) {
+        // Success - we got the user profile
+        console.log('Profile successfully fetched:', {
           role: data.role,
-          full_name: data.full_name
+          full_name: data.full_name,
+          is_active: data.is_active
         });
+        
+        if (!data.is_active) {
+          console.warn('User account is inactive');
+          // You might want to handle inactive users differently
+        }
+        
+        setUserWithProfile(authUser, data);
+      } else {
+        // No error but no data - shouldn't happen
+        console.warn('No error but no data returned, using fallback');
+        setUserWithFallback(authUser);
       }
+      
     } catch (error) {
-      console.error('Profile fetch failed:', error);
-      setUserWithFallback(authUser);
+      console.error('Profile fetch exception:', error);
+      if (retryCount < 2) {
+        console.log(`Retrying profile fetch... (${retryCount + 1}/3)`);
+        await fetchUserProfile(authUser, retryCount + 1);
+      } else {
+        setUserWithFallback(authUser);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const createUserProfile = async (authUser: User) => {
+    console.log('Creating user profile for:', authUser.email);
+    
     try {
       const { data, error } = await supabase
         .from('users')
@@ -141,10 +194,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             id: authUser.id,
             email: authUser.email!,
             full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User',
-            role: 'customer' as UserRole
+            role: 'customer' as UserRole,
+            is_active: true
           }
         ])
-        .select()
+        .select('role, full_name, email, is_active')
         .single();
 
       if (error) {
@@ -152,37 +206,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserWithFallback(authUser);
       } else {
         console.log('Profile created successfully:', data);
-        setUser({
-          ...authUser,
-          role: data.role,
-          full_name: data.full_name
-        });
+        setUserWithProfile(authUser, data);
       }
     } catch (error) {
-      console.error('Profile creation error:', error);
+      console.error('Profile creation exception:', error);
       setUserWithFallback(authUser);
     }
   };
 
-  const setUserWithFallback = (authUser: User) => {
-    console.log('Using fallback user data');
+  const setUserWithProfile = (authUser: User, profileData: any) => {
     setUser({
       ...authUser,
-      role: 'customer',
+      role: profileData.role,
+      full_name: profileData.full_name
+    });
+  };
+
+  const setUserWithFallback = (authUser: User) => {
+    console.warn('Using fallback user data - Management features may not be available');
+    setUser({
+      ...authUser,
+      role: 'customer', // Default fallback role
       full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User'
     });
   };
 
+  const refreshUserProfile = async () => {
+    if (session?.user) {
+      console.log('Manually refreshing user profile...');
+      await fetchUserProfile(session.user);
+    }
+  };
+
   const signIn = async (email: string, password: string) => {
+    console.log('Attempting sign in for:', email);
     const { error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Sign in error:', error);
+      throw error;
+    }
+    console.log('Sign in successful');
   };
 
   const signUp = async (email: string, password: string, fullName: string, role: UserRole) => {
+    console.log('Attempting sign up for:', email, 'with role:', role);
+    
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
@@ -191,41 +263,86 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Sign up error:', error);
+      throw error;
+    }
 
-    // The trigger should handle profile creation, but we can try as backup
+    // Try to create the user profile with the specified role
     if (data.user && data.session) {
       try {
-        await supabase
+        const { error: profileError } = await supabase
           .from('users')
           .insert([
             {
               id: data.user.id,
               email: data.user.email!,
               full_name: fullName,
-              role: role
+              role: role,
+              is_active: true
             }
           ]);
+          
+        if (profileError) {
+          console.warn('Profile creation during signup failed:', profileError);
+          // Don't throw - the trigger might have handled it or we'll handle it on first sign in
+        } else {
+          console.log('User profile created during signup with role:', role);
+        }
       } catch (profileError) {
         console.warn('Profile creation during signup failed:', profileError);
-        // Don't throw - the trigger might have handled it
+        // Don't throw - we'll handle this on first sign in
       }
     }
+    
+    console.log('Sign up successful');
   };
 
   const signOut = async () => {
+    console.log('Signing out...');
     const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    if (error) {
+      console.error('Sign out error:', error);
+      throw error;
+    }
     
     setUser(null);
     setSession(null);
+    console.log('Sign out successful');
   };
 
-  const hasRole = (role: UserRole): boolean => user?.role === role;
-  const hasAnyRole = (roles: UserRole[]): boolean => user?.role ? roles.includes(user.role) : false;
+  // Role checking functions with better logging
+  const hasRole = (role: UserRole): boolean => {
+    const result = user?.role === role;
+    console.debug(`hasRole(${role}):`, result, `(current role: ${user?.role})`);
+    return result;
+  };
+  
+  const hasAnyRole = (roles: UserRole[]): boolean => {
+    const result = user?.role ? roles.includes(user.role) : false;
+    console.debug(`hasAnyRole([${roles.join(', ')}]):`, result, `(current role: ${user?.role})`);
+    return result;
+  };
+  
   const isAdministrator = (): boolean => hasRole('administrator');
   const isFarmUser = (): boolean => hasRole('farm');
   const isCustomer = (): boolean => hasRole('customer');
+
+  // Debug info in development
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Auth state update:', {
+        user: user ? {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          full_name: user.full_name
+        } : null,
+        loading,
+        session: session ? 'Present' : 'None'
+      });
+    }
+  }, [user, loading, session]);
 
   return (
     <AuthContext.Provider value={{
@@ -239,7 +356,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       hasAnyRole,
       isAdministrator,
       isFarmUser,
-      isCustomer
+      isCustomer,
+      refreshUserProfile
     }}>
       {children}
     </AuthContext.Provider>
