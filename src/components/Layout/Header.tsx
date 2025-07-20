@@ -122,7 +122,6 @@ export default function Header() {
   // Determine what to show in the auth section
   const showLoadingState = loading && !user && !forceShowButtons;
   const showAuthButtons = !user && (forceShowButtons || !loading);
-  const showUserMenu = user;
 
   return (
     <>
@@ -164,7 +163,7 @@ export default function Header() {
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
                   <span className="text-sm text-gray-500">Loading...</span>
                 </div>
-              ) : showUserMenu ? (
+              ) : user ? (
                 <div className="relative">
                   <button
                     id="user-menu-button"
