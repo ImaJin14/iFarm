@@ -1,3 +1,4 @@
+// src/hooks/useAnimals.ts - Fixed version
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/supabase';
@@ -49,6 +50,7 @@ export const useAnimals = (filters?: AnimalFilters) => {
       setLoading(true);
       setError(null);
       
+      // First approach: Use column-based joins
       let query = supabase
         .from('animals')
         .select(`
@@ -66,11 +68,11 @@ export const useAnimals = (filters?: AnimalFilters) => {
             name,
             description
           ),
-          sire:animals!animals_sire_id_fkey(
+          sire:animals!sire_id(
             name,
             registration_number
           ),
-          dam:animals!animals_dam_id_fkey(
+          dam:animals!dam_id(
             name,
             registration_number
           )
@@ -102,7 +104,14 @@ export const useAnimals = (filters?: AnimalFilters) => {
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        // If column-based approach fails, try fallback approach
+        console.warn('Column-based join failed, trying fallback approach:', error);
+        const fallbackData = await fetchAnimalsWithFallback(filters);
+        setAnimals(fallbackData);
+        return;
+      }
+
       setAnimals(data || []);
     } catch (err) {
       console.error('Error fetching animals:', err);
@@ -110,6 +119,94 @@ export const useAnimals = (filters?: AnimalFilters) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Fallback approach: Separate queries
+  const fetchAnimalsWithFallback = async (filters?: AnimalFilters): Promise<AnimalWithDetails[]> => {
+    // Get animals without parent relationships first
+    let query = supabase
+      .from('animals')
+      .select(`
+        *,
+        breeds!inner(
+          name,
+          type,
+          description
+        ),
+        facilities(
+          name,
+          facility_type
+        ),
+        genetic_lines(
+          name,
+          description
+        )
+      `)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+
+    // Apply filters
+    if (filters) {
+      if (filters.breed_id) {
+        query = query.eq('breed_id', filters.breed_id);
+      }
+      if (filters.status) {
+        query = query.eq('status', filters.status);
+      }
+      if (filters.gender) {
+        query = query.eq('gender', filters.gender);
+      }
+      if (filters.facility_id) {
+        query = query.eq('facility_id', filters.facility_id);
+      }
+      if (filters.is_for_sale !== undefined) {
+        query = query.eq('is_for_sale', filters.is_for_sale);
+      }
+      if (filters.is_breeding_quality !== undefined) {
+        query = query.eq('is_breeding_quality', filters.is_breeding_quality);
+      }
+    }
+
+    const { data: animals, error: animalsError } = await query;
+
+    if (animalsError) throw animalsError;
+
+    if (!animals || animals.length === 0) {
+      return [];
+    }
+
+    // Get unique parent IDs
+    const parentIds = [
+      ...animals.filter(a => a.sire_id).map(a => a.sire_id),
+      ...animals.filter(a => a.dam_id).map(a => a.dam_id)
+    ].filter((id, index, arr) => arr.indexOf(id) === index && id !== null);
+
+    // Fetch parent animals if any exist
+    let parentAnimals: Array<{id: string, name: string, registration_number: string}> = [];
+    if (parentIds.length > 0) {
+      const { data: parents, error: parentsError } = await supabase
+        .from('animals')
+        .select('id, name, registration_number')
+        .in('id', parentIds);
+
+      if (parentsError) {
+        console.warn('Could not fetch parent animals:', parentsError);
+      } else {
+        parentAnimals = parents || [];
+      }
+    }
+
+    // Create a map for quick parent lookup
+    const parentMap = new Map(parentAnimals.map(p => [p.id, p]));
+
+    // Attach parent information to animals
+    const animalsWithParents = animals.map(animal => ({
+      ...animal,
+      sire: animal.sire_id ? parentMap.get(animal.sire_id) || null : null,
+      dam: animal.dam_id ? parentMap.get(animal.dam_id) || null : null
+    }));
+
+    return animalsWithParents;
   };
 
   const createAnimal = async (animalData: AnimalInsert) => {
@@ -278,7 +375,8 @@ export const useAnimal = (animalId: string) => {
       setLoading(true);
       setError(null);
       
-      const { data, error } = await supabase
+      // Try column-based approach first
+      let { data, error } = await supabase
         .from('animals')
         .select(`
           *,
@@ -295,11 +393,11 @@ export const useAnimal = (animalId: string) => {
             name,
             description
           ),
-          sire:animals!animals_sire_id_fkey(
+          sire:animals!sire_id(
             name,
             registration_number
           ),
-          dam:animals!animals_dam_id_fkey(
+          dam:animals!dam_id(
             name,
             registration_number
           )
@@ -308,7 +406,58 @@ export const useAnimal = (animalId: string) => {
         .eq('is_active', true)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // Fallback: Fetch without parent relationships and add them separately
+        console.warn('Column-based join failed for single animal, trying fallback:', error);
+        
+        const { data: animalData, error: animalError } = await supabase
+          .from('animals')
+          .select(`
+            *,
+            breeds!inner(
+              name,
+              type,
+              description
+            ),
+            facilities(
+              name,
+              facility_type
+            ),
+            genetic_lines(
+              name,
+              description
+            )
+          `)
+          .eq('id', animalId)
+          .eq('is_active', true)
+          .single();
+
+        if (animalError) throw animalError;
+
+        // Fetch parent animals if they exist
+        const parentIds = [animalData.sire_id, animalData.dam_id].filter(Boolean);
+        let sireData = null;
+        let damData = null;
+
+        if (parentIds.length > 0) {
+          const { data: parentAnimals } = await supabase
+            .from('animals')
+            .select('id, name, registration_number')
+            .in('id', parentIds);
+
+          if (parentAnimals) {
+            sireData = parentAnimals.find(p => p.id === animalData.sire_id);
+            damData = parentAnimals.find(p => p.id === animalData.dam_id);
+          }
+        }
+
+        data = {
+          ...animalData,
+          sire: sireData,
+          dam: damData
+        };
+      }
+
       setAnimal(data);
     } catch (err) {
       console.error('Error fetching animal:', err);
