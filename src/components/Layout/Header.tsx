@@ -1,68 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Heart, User, LogOut, Settings } from 'lucide-react';
+import { Heart, Menu, X, User, LogOut, Settings, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import AuthModal from '../Auth/AuthModal';
 
-export default function Header() {
+interface HeaderProps {
+  forceShowButtons?: boolean;
+}
+
+export default function Header({ forceShowButtons = false }: HeaderProps) {
+  const { user, loading, signOut, isAdministrator, isFarmUser, refreshUserProfile } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [authModal, setAuthModal] = useState<{ show: boolean; mode: 'signin' | 'signup' }>({ 
-    show: false, 
-    mode: 'signin' 
-  });
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [forceShowButtons, setForceShowButtons] = useState(false);
+  const [authModal, setAuthModal] = useState({ show: false, mode: 'signin' as 'signin' | 'signup' });
+  const [refreshing, setRefreshing] = useState(false);
   const location = useLocation();
-  const { user, signOut, isAdministrator, isFarmUser, loading } = useAuth();
-
-  // Force show sign-in buttons if loading takes too long
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    
-    if (loading && !user) {
-      timeoutId = setTimeout(() => {
-        console.warn('Auth loading timeout - forcing buttons to show');
-        setForceShowButtons(true);
-      }, 5000); // 5 seconds timeout
-    } else {
-      setForceShowButtons(false);
-    }
-    
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-  }, [loading, user]);
-
-  // Close user menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const userMenuButton = document.getElementById('user-menu-button');
-      const userMenuDropdown = document.getElementById('user-menu-dropdown');
-      
-      if (showUserMenu && 
-          userMenuButton && 
-          userMenuDropdown &&
-          !userMenuButton.contains(event.target as Node) &&
-          !userMenuDropdown.contains(event.target as Node)) {
-        setShowUserMenu(false);
-      }
-    };
-
-    if (showUserMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showUserMenu]);
-
-  // Close mobile menu when route changes
-  useEffect(() => {
-    setIsMenuOpen(false);
-  }, [location.pathname]);
 
   // Close auth modal when user becomes authenticated
   useEffect(() => {
@@ -72,6 +24,7 @@ export default function Header() {
     }
   }, [user, authModal.show]);
 
+  // Base navigation items
   const navigation = [
     { name: 'Home', href: '/' },
     { name: 'About', href: '/about' },
@@ -80,9 +33,14 @@ export default function Header() {
     { name: 'Contact', href: '/contact' }
   ];
 
-  // Add management link for farm users and administrators
-  if (user && (isFarmUser() || isAdministrator())) {
+  // Add management link for farm users and administrators with better logging
+  const shouldShowManagement = user && (isFarmUser() || isAdministrator());
+  
+  if (shouldShowManagement) {
+    console.log(`Adding Management tab for user role: ${user.role}`);
     navigation.push({ name: 'Management', href: '/management' });
+  } else if (user) {
+    console.log(`Not showing Management tab for user role: ${user.role}`);
   }
 
   const isActive = (path: string) => location.pathname === path;
@@ -99,12 +57,36 @@ export default function Header() {
     }
   };
 
+  const handleRefreshProfile = async () => {
+    if (refreshing) return;
+    
+    setRefreshing(true);
+    try {
+      console.log('Refreshing user profile...');
+      await refreshUserProfile();
+      console.log('Profile refresh completed');
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const getRoleLabel = (role?: string) => {
     switch (role) {
       case 'administrator': return 'Administrator';
       case 'farm': return 'Farm Manager';
       case 'customer': return 'Customer';
       default: return 'User';
+    }
+  };
+
+  const getRoleBadgeColor = (role?: string) => {
+    switch (role) {
+      case 'administrator': return 'bg-red-100 text-red-800';
+      case 'farm': return 'bg-green-100 text-green-800';
+      case 'customer': return 'bg-blue-100 text-blue-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -147,176 +129,232 @@ export default function Header() {
                   to={item.href}
                   className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
                     isActive(item.href)
-                      ? 'text-green-600 bg-green-50'
-                      : 'text-gray-700 hover:text-green-600 hover:bg-green-50'
+                      ? 'bg-green-100 text-green-700'
+                      : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
                   {item.name}
+                  {item.name === 'Management' && (
+                    <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getRoleBadgeColor(user?.role)}`}>
+                      {getRoleLabel(user?.role)}
+                    </span>
+                  )}
                 </Link>
               ))}
             </nav>
 
-            {/* Desktop User Menu */}
+            {/* Desktop Auth Section */}
             <div className="hidden md:flex items-center space-x-4">
-              {showLoadingState ? (
-                <div className="flex items-center space-x-2 px-3 py-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
-                  <span className="text-sm text-gray-500">Loading...</span>
-                </div>
-              ) : user ? (
-                <div className="relative">
-                  <button
-                    id="user-menu-button"
-                    onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-green-600 hover:bg-green-50 transition-colors duration-200"
-                  >
-                    <User className="h-4 w-4" />
-                    <span>{user.full_name || user.email}</span>
-                  </button>
-
-                  {showUserMenu && (
-                    <div 
-                      id="user-menu-dropdown"
-                      className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2"
-                    >
-                      <div className="px-4 py-2 border-b border-gray-200">
-                        <p className="text-sm font-medium text-gray-900">
-                          {user.full_name || user.email}
-                        </p>
-                        <p className="text-xs text-gray-500">{getRoleLabel(user.role)}</p>
-                      </div>
-                      
-                      {(isFarmUser() || isAdministrator()) && (
-                        <Link
-                          to="/management"
-                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          onClick={() => setShowUserMenu(false)}
-                        >
-                          <Settings className="h-4 w-4 mr-2" />
-                          Management Dashboard
-                        </Link>
-                      )}
-                      
-                      <button
-                        onClick={handleSignOut}
-                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        <LogOut className="h-4 w-4 mr-2" />
-                        Sign Out
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : showAuthButtons ? (
-                <div className="flex items-center space-x-3">
+              {showLoadingState && (
+                <div className="text-sm text-gray-500">Loading...</div>
+              )}
+              
+              {showAuthButtons && (
+                <>
                   <button
                     onClick={() => openAuthModal('signin')}
-                    className="text-green-600 hover:text-green-700 px-4 py-2 rounded-lg font-medium transition-colors duration-200 border border-green-600 hover:bg-green-50"
+                    className="text-gray-600 hover:text-gray-900 font-medium"
                   >
                     Sign In
                   </button>
                   <button
                     onClick={() => openAuthModal('signup')}
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors duration-200"
                   >
                     Sign Up
                   </button>
+                </>
+              )}
+
+              {user && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 focus:outline-none"
+                  >
+                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                      <User className="w-4 h-4 text-green-600" />
+                    </div>
+                    <span className="text-sm font-medium">
+                      {user.full_name || user.email?.split('@')[0]}
+                    </span>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getRoleBadgeColor(user.role)}`}>
+                      {getRoleLabel(user.role)}
+                    </span>
+                  </button>
+
+                  {showUserMenu && (
+                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
+                      <div className="px-4 py-2 border-b border-gray-200">
+                        <p className="text-sm font-medium text-gray-900">
+                          {user.full_name || 'User'}
+                        </p>
+                        <p className="text-xs text-gray-500">{user.email}</p>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getRoleBadgeColor(user.role)}`}>
+                            {getRoleLabel(user.role)}
+                          </span>
+                          <span className="text-xs text-gray-400">ID: {user.id.slice(0, 8)}...</span>
+                        </div>
+                      </div>
+                      
+                      {/* Debug info in development */}
+                      {process.env.NODE_ENV === 'development' && (
+                        <div className="px-4 py-2 border-b border-gray-200 bg-gray-50">
+                          <p className="text-xs text-gray-600 font-medium">Debug Info:</p>
+                          <p className="text-xs text-gray-500">
+                            Farm User: {isFarmUser() ? 'Yes' : 'No'}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Administrator: {isAdministrator() ? 'Yes' : 'No'}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Should Show Management: {shouldShowManagement ? 'Yes' : 'No'}
+                          </p>
+                        </div>
+                      )}
+                      
+                      <button
+                        onClick={handleRefreshProfile}
+                        disabled={refreshing}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                      >
+                        <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                        {refreshing ? 'Refreshing...' : 'Refresh Profile'}
+                      </button>
+                      
+                      <Link
+                        to="/profile"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        <Settings className="w-4 h-4 mr-2 inline" />
+                        Profile Settings
+                      </Link>
+                      
+                      <button
+                        onClick={handleSignOut}
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center"
+                      >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Sign Out
+                      </button>
+                    </div>
+                  )}
                 </div>
-              ) : null}
+              )}
             </div>
 
             {/* Mobile menu button */}
             <div className="md:hidden">
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-green-600 hover:bg-green-50 transition-colors duration-200"
+                className="text-gray-600 hover:text-gray-900 focus:outline-none"
               >
-                {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                {isMenuOpen ? (
+                  <X className="h-6 w-6" />
+                ) : (
+                  <Menu className="h-6 w-6" />
+                )}
               </button>
             </div>
           </div>
 
           {/* Mobile Navigation */}
           {isMenuOpen && (
-            <div className="md:hidden border-t border-gray-200">
-              <div className="px-2 pt-2 pb-3 space-y-1">
-                {/* Mobile Navigation Links */}
+            <div className="md:hidden border-t border-gray-200 py-4">
+              <nav className="space-y-2">
                 {navigation.map((item) => (
                   <Link
                     key={item.name}
                     to={item.href}
-                    className={`block px-3 py-2 rounded-md text-base font-medium transition-colors duration-200 ${
+                    className={`block px-3 py-2 rounded-md text-base font-medium ${
                       isActive(item.href)
-                        ? 'text-green-600 bg-green-50'
-                        : 'text-gray-700 hover:text-green-600 hover:bg-green-50'
+                        ? 'bg-green-100 text-green-700'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                     }`}
                     onClick={() => setIsMenuOpen(false)}
                   >
                     {item.name}
+                    {item.name === 'Management' && (
+                      <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getRoleBadgeColor(user?.role)}`}>
+                        {getRoleLabel(user?.role)}
+                      </span>
+                    )}
                   </Link>
                 ))}
-                
-                {/* Mobile User Menu */}
-                <div className="border-t border-gray-200 mt-2 pt-2">
-                  {showLoadingState ? (
-                    <div className="flex items-center px-3 py-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600 mr-2"></div>
-                      <span className="text-sm text-gray-500">Loading...</span>
+              </nav>
+
+              {/* Mobile Auth Section */}
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                {showAuthButtons && (
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => openAuthModal('signin')}
+                      className="w-full text-left px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md"
+                    >
+                      Sign In
+                    </button>
+                    <button
+                      onClick={() => openAuthModal('signup')}
+                      className="w-full bg-green-600 text-white px-3 py-2 rounded-md hover:bg-green-700 transition-colors duration-200"
+                    >
+                      Sign Up
+                    </button>
+                  </div>
+                )}
+
+                {user && (
+                  <div className="space-y-2">
+                    <div className="px-3 py-2 bg-gray-50 rounded-md">
+                      <p className="text-sm font-medium text-gray-900">
+                        {user.full_name || 'User'}
+                      </p>
+                      <p className="text-xs text-gray-500">{user.email}</p>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mt-1 ${getRoleBadgeColor(user.role)}`}>
+                        {getRoleLabel(user.role)}
+                      </span>
                     </div>
-                  ) : user ? (
-                    <>
-                      <div className="px-3 py-2">
-                        <p className="text-sm font-medium text-gray-900">
-                          {user.full_name || user.email}
-                        </p>
-                        <p className="text-xs text-gray-500">{getRoleLabel(user.role)}</p>
-                      </div>
-                      {(isFarmUser() || isAdministrator()) && (
-                        <Link
-                          to="/management"
-                          className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-green-600 hover:bg-green-50"
-                          onClick={() => setIsMenuOpen(false)}
-                        >
-                          Management Dashboard
-                        </Link>
-                      )}
-                      <button
-                        onClick={() => {
-                          handleSignOut();
-                          setIsMenuOpen(false);
-                        }}
-                        className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-green-600 hover:bg-green-50"
-                      >
-                        Sign Out
-                      </button>
-                    </>
-                  ) : (
-                    <div className="space-y-2">
-                      <button
-                        onClick={() => openAuthModal('signin')}
-                        className="block w-full text-left px-3 py-2 text-base font-medium text-green-600 hover:bg-green-50"
-                      >
-                        Sign In
-                      </button>
-                      <button
-                        onClick={() => openAuthModal('signup')}
-                        className="block w-full text-left px-3 py-2 text-base font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 mx-3"
-                      >
-                        Sign Up
-                      </button>
-                    </div>
-                  )}
-                </div>
+                    
+                    <button
+                      onClick={handleRefreshProfile}
+                      disabled={refreshing}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center"
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                      {refreshing ? 'Refreshing...' : 'Refresh Profile'}
+                    </button>
+                    
+                    <Link
+                      to="/profile"
+                      className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <Settings className="w-4 h-4 mr-2 inline" />
+                      Profile Settings
+                    </Link>
+                    
+                    <button
+                      onClick={handleSignOut}
+                      className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md flex items-center"
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Sign Out
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
         </div>
       </header>
 
-      <AuthModal 
-        isOpen={authModal.show} 
-        onClose={closeAuthModal} 
-        initialMode={authModal.mode}
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={authModal.show}
+        mode={authModal.mode}
+        onClose={closeAuthModal}
+        onToggleMode={(mode) => setAuthModal({ ...authModal, mode })}
       />
     </>
   );
