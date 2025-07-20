@@ -98,13 +98,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Add a small delay for the first retry to allow RLS policies to settle
       if (retryCount > 0) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 10000));
       }
 
       // Try to get the user profile with better error handling
       const { data, error } = await supabase
         .from('users')
-        .select('role, full_name, email, is_active')
+        .select('*')
         .eq('id', authUser.id)
         .single();
 
