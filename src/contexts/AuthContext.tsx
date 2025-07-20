@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         setInitComplete(true);
       }
-    }, 8000); // 8 second max loading time
+    }, 10000); // 10 second max loading time
 
     return () => clearTimeout(loadingTimeout);
   }, [loading, initComplete]);
@@ -143,57 +143,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const fetchUserProfile = async (authUser: User) => {
-    console.log('fetchUserProfile started for user:', authUser.id);
-    
-    const fetchTimeout = setTimeout(() => {
-      console.warn('fetchUserProfile timed out, setting loading to false');
-      setLoading(false);
-    }, 5000); // 5 second timeout for profile fetch
+  const fetchUserProfile = async (authUser: User, retryCount = 0) => {
+    console.log('fetchUserProfile started for user:', authUser.id, 'retry:', retryCount);
     
     try {
+      // Use AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, 8000); // 8 second timeout
+
       const { data, error } = await supabase
         .from('users')
         .select('role, full_name')
         .eq('id', authUser.id)
-        .single();
+        .single()
+        .abortSignal(controller.signal);
 
-      clearTimeout(fetchTimeout);
+      clearTimeout(timeoutId);
 
       if (error) {
         console.error('Error fetching user profile:', error);
         
-        // If user doesn't exist in users table, create a basic profile
+        // If user doesn't exist in users table, create one
         if (error.code === 'PGRST116') { // Row not found
-          console.log('User profile not found, creating basic profile...');
-          try {
-            const { error: insertError } = await supabase
-              .from('users')
-              .insert([
-                {
-                  id: authUser.id,
-                  email: authUser.email!,
-                  full_name: authUser.user_metadata?.full_name || null,
-                  role: 'customer' as UserRole
-                }
-              ]);
+          console.log('User profile not found, creating...');
+          
+          const { error: insertError } = await supabase
+            .from('users')
+            .insert([
+              {
+                id: authUser.id,
+                email: authUser.email!,
+                full_name: authUser.user_metadata?.full_name || null,
+                role: 'customer' as UserRole
+              }
+            ]);
 
-            if (insertError) {
-              console.error('Error creating user profile:', insertError);
-            } else {
-              console.log('Basic user profile created');
-            }
-          } catch (insertErr) {
-            console.error('Failed to create user profile:', insertErr);
+          if (insertError) {
+            console.error('Error creating user profile:', insertError);
+            // Use fallback user data
+            setUserWithFallback(authUser);
+          } else {
+            console.log('User profile created, setting user...');
+            setUser({
+              ...authUser,
+              role: 'customer',
+              full_name: authUser.user_metadata?.full_name || null
+            });
           }
+        } else if (retryCount < 2) {
+          // Retry up to 2 times for other errors
+          console.log('Retrying profile fetch in 2 seconds...');
+          setTimeout(() => {
+            fetchUserProfile(authUser, retryCount + 1);
+          }, 2000);
+          return; // Don't set loading to false yet
+        } else {
+          // Max retries reached, use fallback
+          console.warn('Profile fetch failed after retries, using fallback');
+          setUserWithFallback(authUser);
         }
-        
-        // Set user with default values
-        setUser({
-          ...authUser,
-          role: 'customer',
-          full_name: authUser.user_metadata?.full_name || null
-        });
       } else {
         console.log('User profile fetched successfully:', data);
         setUser({
@@ -202,19 +212,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           full_name: data.full_name
         });
       }
-    } catch (error) {
-      clearTimeout(fetchTimeout);
-      console.error('Unexpected error in fetchUserProfile:', error);
-      // Set user with basic info even if profile fetch fails
-      setUser({
-        ...authUser,
-        role: 'customer',
-        full_name: authUser.user_metadata?.full_name || null
-      });
+    } catch (error: any) {
+      console.error('Profile fetch error:', error);
+      
+      if (error.name === 'AbortError') {
+        console.warn('Profile fetch timed out');
+        if (retryCount < 1) {
+          console.log('Retrying profile fetch...');
+          setTimeout(() => {
+            fetchUserProfile(authUser, retryCount + 1);
+          }, 1000);
+          return;
+        }
+      }
+      
+      // Use fallback user data
+      setUserWithFallback(authUser);
     } finally {
       console.log('fetchUserProfile completed, setting loading to false');
       setLoading(false);
     }
+  };
+
+  const setUserWithFallback = (authUser: User) => {
+    console.log('Setting user with fallback data');
+    setUser({
+      ...authUser,
+      role: 'customer', // Default role
+      full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User'
+    });
   };
 
   const signIn = async (email: string, password: string) => {
