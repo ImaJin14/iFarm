@@ -32,7 +32,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error('Error getting session:', error);
+        // Clear any invalid stored tokens
+        if (error.message?.includes('Invalid Refresh Token') || error.message?.includes('refresh_token_not_found')) {
+          supabase.auth.signOut();
+        }
+        setLoading(false);
+        return;
+      }
+      
       setSession(session);
       if (session?.user) {
         fetchUserProfile(session.user);
@@ -43,11 +53,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session);
-      if (session?.user) {
-        await fetchUserProfile(session.user);
-      } else {
-        setUser(null);
+      console.log('Auth state changed:', event);
+      
+      try {
+        if (event === 'TOKEN_REFRESHED') {
+          setSession(session);
+          if (session?.user) {
+            await fetchUserProfile(session.user);
+          }
+        } else if (event === 'SIGNED_OUT' || !session) {
+          setUser(null);
+          setSession(null);
+          setLoading(false);
+        } else if (event === 'SIGNED_IN' && session?.user) {
+          setSession(session);
+          await fetchUserProfile(session.user);
+        }
+      } catch (error: any) {
+        console.error('Auth state change error:', error);
+        
+        // Handle invalid refresh token errors
+        if (error.message?.includes('Invalid Refresh Token') || 
+            error.message?.includes('refresh_token_not_found') ||
+            error.status === 400) {
+          console.log('Invalid refresh token detected, signing out...');
+          await supabase.auth.signOut();
+          setUser(null);
+          setSession(null);
+        }
         setLoading(false);
       }
     });
